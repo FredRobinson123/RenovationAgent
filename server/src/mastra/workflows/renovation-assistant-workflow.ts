@@ -112,7 +112,7 @@ const budgetAgentStep = createStep({
 
 
     // Generate response using the budgetAgent
-    const response = await budgetAgent.generateVNext(message);
+    const response = await budgetAgent.generate(message);
 
 
     return {
@@ -142,7 +142,7 @@ const designAgentStep = createStep({
 
 
     // Generate response using the designAgent (using string format instead of message object)
-    const response = await designAgent.generateVNext(message);
+    const response = await designAgent.generate(message);
 
 
     return {

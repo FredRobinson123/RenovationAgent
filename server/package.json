@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@ai-sdk/gateway": "^2.0.9",
+    "@ai-sdk/google": "^2.0.32",
     "@mastra/client-js": "^0.16.10",
     "@mastra/core": "^0.24.1",
     "@mastra/libsql": "^0.16.2",
