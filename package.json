@@ -1,0 +1,15 @@
+{
+  "name": "renovation-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A renovation assistant using Mastra",
+  "scripts": {
+    "dev": "mastra dev --root server --dir server/src/mastra",
+    "api": "pnpm --filter server dev",
+    "build": "pnpm --filter server build"
+  },
+  "devDependencies": {
+    "mastra": "^0.18.1",
+    "typescript": "^5.3.3"
+  }
+}
