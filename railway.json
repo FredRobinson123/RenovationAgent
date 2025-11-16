@@ -1,0 +1,22 @@
+{
+  "$schema": "https://railway.app/config/railway.schema.json",
+  "configVersion": 2,
+  "defaultService": "server",
+  "services": {
+    "server": {
+      "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "server/Dockerfile",
+        "context": "."
+      }
+    },
+    "client": {
+      "build": {
+        "builder": "DOCKERFILE",
+        "dockerfilePath": "client/Dockerfile",
+        "context": "."
+      }
+    }
+  }
+}
+
