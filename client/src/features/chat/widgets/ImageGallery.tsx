@@ -1,5 +1,6 @@
 import type { DesignImageGallery } from "@/features/chat/types";
 import { cn } from "@/lib/utils";
+import { designSystem } from "@/theme/designSystem";
 
 interface ImageGalleryProps {
   gallery: DesignImageGallery;
@@ -12,14 +13,21 @@ export function ImageGallery({ gallery, className }: ImageGalleryProps) {
   if (images.length === 0) return null;
 
   return (
-    <div className={cn("space-y-3", className)} data-testid="image-gallery">
+    <div
+      className={cn(
+        "space-y-3 rounded-2xl border border-widget-border bg-widget/10 shadow-inner",
+        className
+      )}
+      style={{ padding: designSystem.spacing.widgetPadding }}
+      data-testid="image-gallery"
+    >
       <div>
-        <p className="text-sm font-semibold text-card-foreground">Design inspiration</p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm font-semibold text-widget-foreground">Design inspiration</p>
+        <p className="text-xs text-widget-foreground/70">
           Search: <span className="font-medium">{gallery.query}</span>
         </p>
         {gallery.summary && (
-          <p className="text-sm text-muted-foreground mt-1">{gallery.summary}</p>
+          <p className="text-sm text-widget-foreground/80 mt-1">{gallery.summary}</p>
         )}
       </div>
 
@@ -30,7 +38,7 @@ export function ImageGallery({ gallery, className }: ImageGalleryProps) {
             href={image.sourceUrl}
             target="_blank"
             rel="noreferrer"
-            className="group relative block overflow-hidden rounded-xl border border-border bg-muted"
+            className="group relative block overflow-hidden rounded-xl border border-widget-border/70 bg-soft-linen"
             data-testid={`image-item-${image.id}`}
           >
             <img

@@ -3,6 +3,7 @@ import { Button } from "@/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/card";
 import type { BudgetSpreadsheet } from "@/features/chat/types";
 import { useMemo, useState } from "react";
+import { designSystem } from "@/theme/designSystem";
 
 interface SpreadsheetViewerProps {
   spreadsheet: BudgetSpreadsheet;
@@ -44,15 +45,15 @@ export function SpreadsheetViewer({ spreadsheet, onDownload, currencyCode = "USD
   ];
 
   return (
-    <Card className="w-full max-w-5xl mx-auto" data-testid="card-spreadsheet">
-      <CardHeader className="bg-chart-4/10 dark:bg-chart-4/20 border-b border-chart-4/20">
+    <Card className="w-full max-w-5xl mx-auto bg-widget/5 border-widget-border" data-testid="card-spreadsheet">
+      <CardHeader className="bg-widget/15 border-b border-widget-border text-widget-foreground">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <CardTitle className="font-playful text-2xl flex items-center gap-2">
+            <CardTitle className="font-playful text-2xl flex items-center gap-2 text-widget-foreground">
               <PoundSterling className="h-5 w-5" />
               {spreadsheet.projectName}
             </CardTitle>
-            <CardDescription className="mt-1">
+            <CardDescription className="mt-1 text-widget-foreground/80">
               Generated {new Date(spreadsheet.createdAt).toLocaleString()}
             </CardDescription>
           </div>
@@ -85,24 +86,24 @@ export function SpreadsheetViewer({ spreadsheet, onDownload, currencyCode = "USD
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6" style={{ padding: designSystem.spacing.widgetPadding, paddingTop: 0 }}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {summaryStats.map((stat) => (
-            <div key={stat.label} className="p-4 rounded-xl border border-card-border bg-muted/40">
-              <p className="text-sm text-muted-foreground">{stat.label}</p>
-              <p className="text-2xl font-semibold mt-2">{stat.value}</p>
+            <div key={stat.label} className="p-4 rounded-xl border border-widget-border/60 bg-soft-linen shadow-inner">
+              <p className="text-sm text-charcoal-taupe/80">{stat.label}</p>
+              <p className="text-2xl font-semibold mt-2 text-charcoal-taupe">{stat.value}</p>
             </div>
           ))}
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-muted sticky top-0">
+            <thead className="bg-bubble-agent sticky top-0 text-bubble-agent-foreground">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Category</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Description</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">Cost</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Notes</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-bubble-agent-foreground">Category</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-bubble-agent-foreground">Description</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-bubble-agent-foreground">Cost</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-bubble-agent-foreground">Notes</th>
               </tr>
             </thead>
             <tbody>
@@ -121,12 +122,12 @@ export function SpreadsheetViewer({ spreadsheet, onDownload, currencyCode = "USD
                 </tr>
               ))}
             </tbody>
-            <tfoot className="bg-muted font-semibold sticky bottom-0">
+              <tfoot className="bg-bubble-agent/70 font-semibold sticky bottom-0 text-bubble-agent-foreground">
               <tr>
                 <td colSpan={2} className="px-4 py-4 text-right text-base">
                   Total (before contingency):
                 </td>
-                <td className="px-4 py-4 text-right text-lg font-mono text-chart-4" data-testid="text-total-estimate">
+                  <td className="px-4 py-4 text-right text-lg font-mono text-widget-foreground" data-testid="text-total-estimate">
                   {currencyFormatter.format(spreadsheet.total)}
                 </td>
                 <td></td>

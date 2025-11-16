@@ -4,6 +4,7 @@ import { Palette, PoundSterling, Sparkles } from "lucide-react";
 import type { ChatMessage as ChatMessageType } from "@/features/chat/types";
 import { SpreadsheetViewer } from "@/features/chat/widgets/SpreadsheetViewer";
 import { ImageGallery } from "@/features/chat/widgets/ImageGallery";
+import { designSystem } from "@/theme/designSystem";
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -13,22 +14,22 @@ const agentConfig = {
   orchestrator: {
     label: "Conversation Guide",
     icon: Sparkles,
-    color: "bg-primary text-primary-foreground",
+    color: "bg-widget text-widget-foreground",
   },
   "design-agent": {
     label: "Design Expert",
     icon: Palette,
-    color: "bg-chart-3 text-white",
+    color: "bg-clay text-charcoal-taupe",
   },
   "budget-agent": {
     label: "Budget Planner",
     icon: PoundSterling,
-    color: "bg-chart-4 text-white",
+    color: "bg-bubble-user text-bubble-user-foreground",
   },
   assistant: {
     label: "Ren",
     icon: Sparkles,
-    color: "bg-muted text-muted-foreground",
+    color: "bg-bubble-agent text-bubble-agent-foreground",
   },
 } as const;
 
@@ -47,11 +48,15 @@ export function ChatMessage({ message }: ChatMessageProps) {
     >
       <div
         className={cn(
-          "max-w-[85%] rounded-2xl p-4 shadow-sm",
+          "max-w-[85%] shadow-sm transition-colors",
           isUser
-            ? "bg-primary/10 dark:bg-primary/20 border border-primary/20"
-            : "bg-card border border-card-border"
+            ? "bg-bubble-user text-bubble-user-foreground border border-bubble-user-border"
+            : "bg-bubble-agent text-bubble-agent-foreground border border-bubble-agent-border"
         )}
+        style={{
+          borderRadius: designSystem.radii.bubble,
+          padding: designSystem.spacing.bubblePadding,
+        }}
       >
         {!isUser && (
           <div className="flex items-center gap-2 mb-2">
@@ -65,13 +70,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
           </div>
         )}
 
-        <div
-          className={cn(
-            "text-base leading-relaxed whitespace-pre-wrap",
-            isUser ? "text-foreground" : "text-card-foreground"
-          )}
-          data-testid="text-message-content"
-        >
+        <div className="text-base leading-relaxed whitespace-pre-wrap" data-testid="text-message-content">
           {message.content}
         </div>
 

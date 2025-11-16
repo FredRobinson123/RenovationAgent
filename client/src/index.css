@@ -4,90 +4,107 @@
 
 /* LIGHT MODE */
 :root {
-  --button-outline: rgba(0,0,0, .10);
-  --badge-outline: rgba(0,0,0, .05);
+  --color-soft-linen: 34 24% 94%;
+  --color-clay: 35 22% 83%;
+  --color-charcoal-taupe: 37 6% 27%;
+  --color-faded-clay: 18 35% 57%;
+
+  --button-outline: rgba(74, 71, 66, 0.12);
+  --badge-outline: rgba(74, 71, 66, 0.08);
 
   /* Automatic computation of border around primary / danger buttons */
-  --opaque-button-border-intensity: -8; /* In terms of percentages */
+  --opaque-button-border-intensity: -10; /* In terms of percentages */
 
   /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .08);
+  --elevate-1: rgba(74, 71, 66, 0.06);
+  --elevate-2: rgba(74, 71, 66, 0.12);
 
-  --background: 0 0% 98%;
+  --background: var(--color-soft-linen);
 
-  --foreground: 220 20% 15%;
+  --foreground: var(--color-charcoal-taupe);
 
-  --border: 220 8% 88%;
+  --border: 32 20% 82%;
 
-  --card: 0 0% 100%;
+  --card: var(--color-clay);
 
-  --card-foreground: 220 18% 18%;
+  --card-foreground: var(--color-charcoal-taupe);
 
-  --card-border: 220 8% 92%;
+  --card-border: 32 18% 75%;
 
-  --sidebar: 0 0% 96%;
+  --sidebar: var(--color-soft-linen);
 
-  --sidebar-foreground: 220 18% 20%;
+  --sidebar-foreground: var(--color-charcoal-taupe);
 
-  --sidebar-border: 220 8% 90%;
+  --sidebar-border: 32 18% 80%;
 
-  --sidebar-primary: 145 35% 45%;
+  --sidebar-primary: var(--color-faded-clay);
 
-  --sidebar-primary-foreground: 145 35% 98%;
+  --sidebar-primary-foreground: 34 45% 96%;
 
-  --sidebar-accent: 145 12% 88%;
+  --sidebar-accent: 35 20% 88%;
 
-  --sidebar-accent-foreground: 145 25% 25%;
+  --sidebar-accent-foreground: var(--color-charcoal-taupe);
 
-  --sidebar-ring: 145 35% 50%;
+  --sidebar-ring: var(--color-faded-clay);
 
-  --popover: 0 0% 99%;
+  --popover: 36 25% 92%;
 
-  --popover-foreground: 220 18% 18%;
+  --popover-foreground: var(--color-charcoal-taupe);
 
-  --popover-border: 220 8% 90%;
+  --popover-border: 32 20% 84%;
 
-  --primary: 145 35% 45%;
+  --primary: var(--color-faded-clay);
 
-  --primary-foreground: 145 35% 98%;
+  --primary-foreground: 34 45% 96%;
 
-  --secondary: 220 8% 90%;
+  --secondary: var(--color-clay);
 
-  --secondary-foreground: 220 20% 18%;
+  --secondary-foreground: var(--color-charcoal-taupe);
 
-  --muted: 220 10% 92%;
+  --muted: 34 20% 88%;
 
-  --muted-foreground: 220 12% 42%;
+  --muted-foreground: 32 16% 40%;
 
-  --accent: 145 15% 90%;
+  --accent: 18 35% 65%;
 
-  --accent-foreground: 145 30% 25%;
+  --accent-foreground: 34 45% 96%;
 
-  --destructive: 0 65% 48%;
+  --destructive: 4 66% 52%;
 
-  --destructive-foreground: 0 65% 98%;
+  --destructive-foreground: 36 71% 96%;
 
-  --input: 220 12% 75%;
-  --ring: 145 35% 50%;
-  --chart-1: 145 50% 42%;
-  --chart-2: 200 65% 48%;
-  --chart-3: 15 60% 55%;
-  --chart-4: 35 75% 52%;
-  --chart-5: 265 55% 50%;
+  --input: 32 20% 78%;
+  --ring: var(--color-faded-clay);
+  --chart-1: var(--color-faded-clay);
+  --chart-2: 35 22% 73%;
+  --chart-3: 8 50% 60%;
+  --chart-4: 28 46% 64%;
+  --chart-5: 45 35% 62%;
+
+  --bubble-agent: var(--color-clay);
+  --bubble-agent-foreground: var(--color-charcoal-taupe);
+  --bubble-agent-border: 35 24% 76%;
+
+  --bubble-user: 18 35% 90%;
+  --bubble-user-foreground: var(--color-charcoal-taupe);
+  --bubble-user-border: 18 35% 80%;
+
+  --widget: var(--color-faded-clay);
+  --widget-foreground: 32 45% 97%;
+  --widget-border: 18 32% 45%;
 
   --font-sans: 'Inter', 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: 'SF Mono', Menlo, Monaco, Consolas, monospace;
   --radius: .75rem;
-  --shadow-2xs: 0px 1px 2px 0px hsl(220 20% 15% / 0.04);
-  --shadow-xs: 0px 1px 3px 0px hsl(220 20% 15% / 0.06);
-  --shadow-sm: 0px 2px 4px -1px hsl(220 20% 15% / 0.06), 0px 1px 2px -1px hsl(220 20% 15% / 0.04);
-  --shadow: 0px 4px 6px -1px hsl(220 20% 15% / 0.08), 0px 2px 4px -2px hsl(220 20% 15% / 0.05);
-  --shadow-md: 0px 6px 8px -2px hsl(220 20% 15% / 0.10), 0px 4px 6px -2px hsl(220 20% 15% / 0.06);
-  --shadow-lg: 0px 10px 15px -3px hsl(220 20% 15% / 0.12), 0px 4px 8px -4px hsl(220 20% 15% / 0.08);
-  --shadow-xl: 0px 20px 25px -5px hsl(220 20% 15% / 0.14), 0px 8px 12px -6px hsl(220 20% 15% / 0.10);
-  --shadow-2xl: 0px 25px 50px -12px hsl(220 20% 15% / 0.20);
+  --shadow-2xs: 0px 1px 2px 0px hsl(var(--foreground) / 0.04);
+  --shadow-xs: 0px 1px 3px 0px hsl(var(--foreground) / 0.06);
+  --shadow-sm: 0px 2px 4px -1px hsl(var(--foreground) / 0.06), 0px 1px 2px -1px hsl(var(--foreground) / 0.04);
+  --shadow: 0px 4px 6px -1px hsl(var(--foreground) / 0.08), 0px 2px 4px -2px hsl(var(--foreground) / 0.05);
+  --shadow-md: 0px 6px 8px -2px hsl(var(--foreground) / 0.10), 0px 4px 6px -2px hsl(var(--foreground) / 0.06);
+  --shadow-lg: 0px 10px 15px -3px hsl(var(--foreground) / 0.12), 0px 4px 8px -4px hsl(var(--foreground) / 0.08);
+  --shadow-xl: 0px 20px 25px -5px hsl(var(--foreground) / 0.14), 0px 8px 12px -6px hsl(var(--foreground) / 0.10);
+  --shadow-2xl: 0px 25px 50px -12px hsl(var(--foreground) / 0.20);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
@@ -123,76 +140,88 @@
 }
 
 .dark {
-  --button-outline: rgba(255,255,255, .10);
-  --badge-outline: rgba(255,255,255, .05);
+  --button-outline: rgba(244, 241, 237, 0.15);
+  --badge-outline: rgba(244, 241, 237, 0.08);
 
-  --opaque-button-border-intensity: 9;  /* In terms of percentages */
+  --opaque-button-border-intensity: 10;  /* In terms of percentages */
 
   /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .09);
+  --elevate-1: rgba(244, 241, 237, 0.08);
+  --elevate-2: rgba(244, 241, 237, 0.16);
 
-  --background: 220 15% 12%;
+  --background: 24 14% 13%;
 
-  --foreground: 0 0% 95%;
+  --foreground: 34 32% 92%;
 
-  --border: 220 12% 22%;
+  --border: 26 16% 26%;
 
-  --card: 220 15% 16%;
+  --card: 24 16% 18%;
 
-  --card-foreground: 0 0% 92%;
+  --card-foreground: 34 32% 94%;
 
-  --card-border: 220 12% 24%;
+  --card-border: 24 17% 26%;
 
-  --sidebar: 220 15% 14%;
+  --sidebar: 26 18% 16%;
 
-  --sidebar-foreground: 0 0% 90%;
+  --sidebar-foreground: 34 35% 92%;
 
-  --sidebar-border: 220 12% 20%;
+  --sidebar-border: 25 18% 24%;
 
-  --sidebar-primary: 145 35% 48%;
+  --sidebar-primary: 18 35% 62%;
 
-  --sidebar-primary-foreground: 145 35% 98%;
+  --sidebar-primary-foreground: 34 45% 96%;
 
-  --sidebar-accent: 145 18% 22%;
+  --sidebar-accent: 24 18% 26%;
 
-  --sidebar-accent-foreground: 145 30% 85%;
+  --sidebar-accent-foreground: 34 35% 90%;
 
-  --sidebar-ring: 145 35% 55%;
+  --sidebar-ring: 18 35% 62%;
 
-  --popover: 220 15% 18%;
+  --popover: 24 16% 18%;
 
-  --popover-foreground: 0 0% 92%;
+  --popover-foreground: 34 32% 94%;
 
-  --popover-border: 220 12% 26%;
+  --popover-border: 25 16% 24%;
 
-  --primary: 145 35% 48%;
+  --primary: 18 35% 62%;
 
-  --primary-foreground: 145 35% 98%;
+  --primary-foreground: 34 45% 96%;
 
-  --secondary: 220 12% 24%;
+  --secondary: 26 16% 24%;
 
-  --secondary-foreground: 0 0% 88%;
+  --secondary-foreground: 34 35% 90%;
 
-  --muted: 220 12% 20%;
+  --muted: 26 14% 22%;
 
-  --muted-foreground: 0 0% 65%;
+  --muted-foreground: 34 20% 70%;
 
-  --accent: 145 18% 24%;
+  --accent: 18 35% 55%;
 
-  --accent-foreground: 145 30% 88%;
+  --accent-foreground: 34 45% 96%;
 
-  --destructive: 0 65% 52%;
+  --destructive: 4 60% 56%;
 
-  --destructive-foreground: 0 65% 98%;
+  --destructive-foreground: 34 45% 96%;
 
-  --input: 220 15% 35%;
-  --ring: 145 35% 55%;
-  --chart-1: 145 55% 65%;
-  --chart-2: 200 70% 68%;
-  --chart-3: 15 65% 70%;
-  --chart-4: 35 80% 68%;
-  --chart-5: 265 60% 70%;
+  --input: 26 14% 32%;
+  --ring: 18 35% 62%;
+  --chart-1: 18 35% 60%;
+  --chart-2: 35 24% 58%;
+  --chart-3: 8 50% 60%;
+  --chart-4: 28 45% 58%;
+  --chart-5: 45 32% 60%;
+
+  --bubble-agent: 26 16% 22%;
+  --bubble-agent-foreground: 34 32% 92%;
+  --bubble-agent-border: 26 16% 28%;
+
+  --bubble-user: 18 35% 40%;
+  --bubble-user-foreground: 34 45% 96%;
+  --bubble-user-border: 18 35% 46%;
+
+  --widget: 18 35% 42%;
+  --widget-foreground: 34 45% 96%;
+  --widget-border: 18 35% 48%;
 
   --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.20);
   --shadow-xs: 0px 1px 3px 0px hsl(0 0% 0% / 0.25);
