@@ -10,15 +10,30 @@ A renovation assistant agent built with Mastra that helps users with design and 
    ```
 
 2. **Set up environment variables:**
-   - Copy `.env.example` to `.env` (if it exists)
-   - Add your API keys:
-     - `EXA_API_KEY` - Required for web search functionality
-     - `GEMINI_API_KEY` - Required for Google Gemini model access
+   - Backend: copy `server/env.example` → `server/.env` and populate:
+     - `PORT` / `HOST` (optional overrides)
+     - `CLERK_SECRET_KEY` – from the Clerk dashboard (API Keys tab)
+     - Any agent-specific keys (`EXA_API_KEY`, `GEMINI_API_KEY`, etc.) you already use
+   - Frontend: copy `client/env.example` → `client/.env` and populate:
+     - `VITE_SERVER_URL=http://localhost:5001`
+     - `VITE_CLERK_PUBLISHABLE_KEY` – the publishable key from Clerk
+   - In Clerk → **Allow list**, add:
+     - Frontend origin: `http://localhost:5173`
+     - Backend origin (for token verification): `http://localhost:5001`
 
-3. **Run the development server:**
+3. **Run the development servers:**
    ```bash
+   # Backend / workflows
    pnpm dev
+
+   # Frontend (in a second terminal)
+   pnpm --filter client dev
    ```
+
+4. **Sign in & test the chat:**
+   - Navigate to `http://localhost:5173`
+   - Sign in with a Clerk user (create one in the dashboard if needed)
+   - Send a chat message; the frontend forwards the Clerk session token to the backend, which verifies it before running the workflow.
 
 ## Project Structure
 
@@ -33,6 +48,14 @@ A renovation assistant agent built with Mastra that helps users with design and 
 - **Budget Agent**: Helps create detailed renovation budgets with spreadsheets
 - **Design Agent**: Assists with interior and exterior design using web search
 - **Workflow Orchestration**: Routes conversations to the appropriate agent
+- **Clerk Authentication**: Only signed-in users can access the chat; each workflow request includes a Clerk session token that the backend verifies before execution.
+
+## Authentication Flow
+
+1. The React app is wrapped in `ClerkProvider`; unauthenticated visitors see the Clerk `<SignIn />` component.
+2. When a user submits a chat message, the frontend requests a fresh Clerk session token and sends it in the `Authorization: Bearer <token>` header to `POST /api/workflows/:id/run`.
+3. The backend verifies the token with `@clerk/backend`. Invalid or missing tokens receive `401 Unauthorized`.
+4. The verified `userId` (and email, if present) are forwarded to the workflow as part of `inputData`, enabling audit trails or personalized responses.
 
 ## Tech Stack
 

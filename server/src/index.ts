@@ -5,6 +5,7 @@
  */
 import 'dotenv/config';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { verifyToken } from '@clerk/backend';
 import { mastra } from './mastra/index.js';
 import { agents } from './mastra/agents/index.js';
 import { workflows } from './mastra/workflows/index.js';
@@ -12,6 +13,7 @@ import { logger } from './utils/pino-logger.js';
 
 const PORT = Number(process.env.PORT) || 5001;
 const hostname = process.env.HOST || '0.0.0.0';
+const clerkSecretKey = process.env.CLERK_SECRET_KEY;
 
 type JsonRecord = Record<string, unknown>;
 type WorkflowInstance = {
@@ -25,10 +27,15 @@ type WorkflowInstance = {
 const workflowMap: Record<string, WorkflowInstance> =
   workflows as unknown as Record<string, WorkflowInstance>;
 
+type AuthenticatedUser = {
+  userId: string;
+  email?: string;
+};
+
 function setCorsHeaders(res: ServerResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
 }
 
 async function readJsonBody(req: IncomingMessage): Promise<JsonRecord | undefined> {
@@ -56,10 +63,54 @@ function sendJson(res: ServerResponse, statusCode: number, payload: JsonRecord) 
   res.end(JSON.stringify(payload));
 }
 
+async function authenticateRequest(
+  req: IncomingMessage,
+  res: ServerResponse
+): Promise<AuthenticatedUser | undefined> {
+  if (!clerkSecretKey) {
+    logger.error('CLERK_SECRET_KEY is not configured');
+    sendJson(res, 500, { error: 'Server authentication is misconfigured' });
+    return undefined;
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    sendJson(res, 401, { error: 'Missing Authorization header' });
+    return undefined;
+  }
+
+  const token = authHeader.slice('Bearer '.length).trim();
+  if (!token) {
+    sendJson(res, 401, { error: 'Invalid Authorization header' });
+    return undefined;
+  }
+
+  try {
+    const payload = (await verifyToken(token, {
+      secretKey: clerkSecretKey,
+    })) as Record<string, unknown> & { sub?: string; email?: string };
+
+    const userId = typeof payload.sub === 'string' ? payload.sub : undefined;
+    if (!userId) {
+      logger.warn('Clerk token missing subject');
+      sendJson(res, 401, { error: 'Invalid auth token' });
+      return undefined;
+    }
+
+    const email = typeof payload.email === 'string' ? payload.email : undefined;
+    return { userId, email };
+  } catch (error) {
+    logger.warn('Failed to verify Clerk token', { err: error });
+    sendJson(res, 401, { error: 'Invalid auth token' });
+    return undefined;
+  }
+}
+
 async function handleWorkflowRunRequest(
   workflowId: string,
   req: IncomingMessage,
-  res: ServerResponse
+  res: ServerResponse,
+  authUser: AuthenticatedUser
 ) {
   const workflow =
     workflowMap[workflowId] ??
@@ -73,15 +124,27 @@ async function handleWorkflowRunRequest(
   const body = await readJsonBody(req);
   const inputData = (body?.inputData ?? body) as JsonRecord | undefined;
 
-  if (!inputData) {
+  if (!inputData || typeof inputData !== 'object' || Array.isArray(inputData)) {
     sendJson(res, 400, { error: 'Request must include input data for the workflow' });
     return;
   }
 
-  logger.info('Executing workflow', { workflowId, inputKeys: Object.keys(inputData) });
+  const workflowInput: JsonRecord = {
+    ...inputData,
+    userId: authUser.userId,
+  };
+  if (authUser.email) {
+    workflowInput.userEmail = authUser.email;
+  }
+
+  logger.info('Executing workflow', {
+    workflowId,
+    inputKeys: Object.keys(workflowInput),
+    userId: authUser.userId,
+  });
 
   const runResult = await workflow.start({
-    inputData,
+    inputData: workflowInput,
   });
 
   sendJson(res, 200, {
@@ -134,7 +197,11 @@ async function requestHandler(req: IncomingMessage, res: ServerResponse) {
         sendJson(res, 400, { error: 'Invalid workflow path' });
         return;
       }
-      await handleWorkflowRunRequest(workflowId, req, res);
+      const authUser = await authenticateRequest(req, res);
+      if (!authUser) {
+        return;
+      }
+      await handleWorkflowRunRequest(workflowId, req, res, authUser);
       return;
     }
 

@@ -13,6 +13,13 @@ export const webSearchResultSchema = z.object({
         url: z.string().describe('URL of the search result'),
         snippet: z.string().describe('Snippet or summary of the search result'),
     })).describe('List of search results'),
+    images: z.array(z.object({
+        id: z.string().describe('Unique identifier for the image result'),
+        title: z.string().describe('Title or caption for the inspiration image'),
+        description: z.string().nullable().describe('Supporting description for the image'),
+        imageUrl: z.string().describe('Direct URL to the inspiration image'),
+        sourceUrl: z.string().describe('Source page for the inspiration image'),
+    })).max(5).describe('Up to five image-focused inspiration results'),
     timestamp: z.string().describe('Timestamp of when the search was performed'),
 })
 
@@ -31,21 +38,31 @@ export const designWebSearch = createTool({
     execute: async ({ context }) => {
         const { query, numResults = 5 } = context;
 
-
         const searchResponse = await exa.searchAndContents(query, {
-            numResults: numResults,
+            numResults,
             type: 'auto',
             text: { maxCharacters: 500 }
         });
 
+        const imageResults = searchResponse.results
+            .filter((result) => typeof result.image === 'string' && result.image.trim().length > 0)
+            .slice(0, 5)
+            .map((result) => ({
+                id: result.id,
+                title: result.title || 'Design inspiration',
+                description: result.text || null,
+                imageUrl: result.image as string,
+                sourceUrl: result.url,
+            }));
 
         return {
-            query: query,
+            query,
             results: searchResponse.results.map(result => ({
                 title: result.title || 'No title available',
                 url: result.url,
                 snippet: result.text || 'No result available',
             })),
+            images: imageResults,
             timestamp: new Date().toISOString(),
         };
     }
