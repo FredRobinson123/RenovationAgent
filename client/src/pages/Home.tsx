@@ -16,6 +16,8 @@ const WORKFLOW_ID = "renovation-workflow";
 const DEFAULT_SERVER_URL = "http://localhost:5001";
 const API_BASE_URL = (import.meta.env.VITE_SERVER_URL ?? DEFAULT_SERVER_URL).replace(/\/$/, "");
 const WORKFLOW_ENDPOINT = `${API_BASE_URL}/api/workflows/${WORKFLOW_ID}/run`;
+const WORKFLOW_REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_WORKFLOW_TIMEOUT_MS ?? 60_000);
+const WORKFLOW_TROUBLESHOOTING = `Verify the Ren API server is running locally (run "pnpm api") and reachable at ${API_BASE_URL}. If requests keep timing out, check the server logs for workflow errors or raise WORKFLOW_TIMEOUT_MS in server/.env.`;
 
 const initialAssistantMessage: ChatMessage = {
   id: "welcome",
@@ -116,6 +118,37 @@ function extractJsonPayload(text: string) {
   return undefined;
 }
 
+function extractErrorMessage(body: string | undefined) {
+  if (!body) {
+    return undefined;
+  }
+
+  const trimmed = body.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (typeof parsed === "string") {
+      return parsed;
+    }
+    if (parsed && typeof parsed === "object") {
+      const record = parsed as Record<string, unknown>;
+      for (const key of ["error", "message", "detail"]) {
+        const value = record[key];
+        if (typeof value === "string") {
+          return value;
+        }
+      }
+    }
+  } catch {
+    return trimmed;
+  }
+
+  return undefined;
+}
+
 function tryParseImageGallery(text: string): DesignImageGallery | undefined {
   const candidate = extractJsonPayload(text);
   if (!candidate) {
@@ -154,6 +187,33 @@ function tryParseBudgetSpreadsheet(text: string): BudgetSpreadsheet | undefined 
   return undefined;
 }
 
+function buildFriendlyErrorMessage(error: unknown) {
+  const defaultMessage = `Something went wrong while contacting the renovation workflow. ${WORKFLOW_TROUBLESHOOTING}`;
+
+  if (error instanceof Error) {
+    const trimmedMessage = error.message.trim();
+    if (!trimmedMessage) {
+      return defaultMessage;
+    }
+
+    if (trimmedMessage.includes(WORKFLOW_TROUBLESHOOTING)) {
+      return trimmedMessage;
+    }
+
+    if (
+      /Failed to fetch/i.test(trimmedMessage) ||
+      /Unable to reach Ren/i.test(trimmedMessage) ||
+      /timed out/i.test(trimmedMessage)
+    ) {
+      return `${trimmedMessage} ${WORKFLOW_TROUBLESHOOTING}`;
+    }
+
+    return trimmedMessage;
+  }
+
+  return defaultMessage;
+}
+
 type WorkflowUserContext = {
   id?: string;
   email?: string;
@@ -177,26 +237,72 @@ async function runRenovationWorkflow(
     userMetadata.userEmail = options.userContext.email;
   }
 
-  const response = await fetch(WORKFLOW_ENDPOINT, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      inputData: {
-        latestCustomerMessage,
-        conversationHistory,
-        ...userMetadata,
-      },
-    }),
-  });
+  let response: Response;
+  const supportsAbort = typeof AbortController !== "undefined";
+  const abortController = supportsAbort ? new AbortController() : undefined;
+  let timeoutId: number | undefined;
 
-  if (!response.ok) {
-    const errorText = (await response.text()) || response.statusText;
-    throw new Error(errorText);
+  if (supportsAbort) {
+    timeoutId = window.setTimeout(() => {
+      abortController?.abort();
+    }, WORKFLOW_REQUEST_TIMEOUT_MS);
   }
 
-  const data = await response.json();
-  const finalResponse = data?.result?.finalResponse;
+  try {
+    response = await fetch(WORKFLOW_ENDPOINT, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        inputData: {
+          latestCustomerMessage,
+          conversationHistory,
+          ...userMetadata,
+        },
+      }),
+      signal: abortController?.signal,
+    });
+  } catch (networkError) {
+    if (networkError instanceof DOMException && networkError.name === "AbortError") {
+      throw new Error(
+        `Workflow request timed out after ${Math.round(
+          WORKFLOW_REQUEST_TIMEOUT_MS / 1000
+        )} seconds. ${WORKFLOW_TROUBLESHOOTING}`
+      );
+    }
 
+    const networkMessage =
+      networkError instanceof Error ? networkError.message : "The browser blocked the request.";
+    throw new Error(
+      `Unable to reach Ren's workflow server at ${API_BASE_URL}. ${WORKFLOW_TROUBLESHOOTING} (details: ${networkMessage})`
+    );
+  } finally {
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId);
+    }
+  }
+
+  const responseText = await response.text().catch(() => "");
+
+  if (!response.ok) {
+    const errorDetail =
+      extractErrorMessage(responseText) ?? response.statusText ?? "The server returned an error.";
+    throw new Error(`Workflow request failed (${response.status}). ${errorDetail}`);
+  }
+
+  if (!responseText) {
+    throw new Error("Workflow returned an empty response.");
+  }
+
+  let data: unknown;
+  try {
+    data = JSON.parse(responseText);
+  } catch {
+    throw new Error("Workflow returned an invalid JSON response.");
+  }
+
+  const record = data as Record<string, unknown>;
+  const result = record?.result as Record<string, unknown> | undefined;
+  const finalResponse = result?.finalResponse;
   if (typeof finalResponse !== "string" || !finalResponse.trim()) {
     throw new Error("Workflow did not return a usable response.");
   }
@@ -266,9 +372,13 @@ export default function Home() {
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       console.error(error);
+      const friendlyMessage = buildFriendlyErrorMessage(error);
+      const assistantErrorContent = friendlyMessage.startsWith("I ")
+        ? friendlyMessage
+        : `I ran into a problem with that request. ${friendlyMessage}`;
       toast({
         title: "Ren hit a snag",
-        description: error instanceof Error ? error.message : "Something went wrong while contacting the workflow.",
+        description: friendlyMessage,
         variant: "destructive",
       });
       setMessages((prev) => [
@@ -276,7 +386,7 @@ export default function Home() {
         {
           id: createId(),
           role: "assistant",
-          content: "I ran into a problem processing that request. Please try again in a moment.",
+          content: assistantErrorContent,
           createdAt: new Date().toISOString(),
           source: "assistant",
         },

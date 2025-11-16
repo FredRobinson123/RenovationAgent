@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import '../load-env.js';
 import { Mastra } from '@mastra/core';
 import { agents } from './agents';
 import { workflows } from './workflows';

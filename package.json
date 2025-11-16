@@ -11,5 +11,8 @@
   "devDependencies": {
     "mastra": "^0.18.1",
     "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "cookie": "^1.0.2"
   }
 }

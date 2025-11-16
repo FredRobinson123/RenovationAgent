@@ -21,5 +21,6 @@ export function createLogger(options?: {
   return new PinoLogger(pinoOptions);
 }
 
-export const logger = createLogger();
-
+export const logger = createLogger({
+  pretty: process.env.PRETTY_LOGS === 'true',
+});
