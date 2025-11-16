@@ -1,9 +1,9 @@
 import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
 import { LibSQLStore } from '@mastra/libsql';
-import { geminiFasttModel } from '../llms';
-import { budgetAgentSystemPrompt } from './prompts';
-import { createBudgetSpreadsheet } from '../tools/create-budget-spreadsheet-tool';
+import { geminiFasttModel } from '../llms/index.js';
+import { budgetAgentSystemPrompt } from './prompts.js';
+import { createBudgetSpreadsheet } from '../tools/create-budget-spreadsheet-tool.js';
 
 
 

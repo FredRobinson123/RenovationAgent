@@ -1,9 +1,9 @@
 import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
 import { LibSQLStore } from '@mastra/libsql';
-import { geminiFasttModel } from '../llms';
-import { designAgentSystemPrompt } from './prompts';
-import { designWebSearch } from '../tools/design-web-search-tool';
+import { geminiFasttModel } from '../llms/index.js';
+import { designAgentSystemPrompt } from './prompts.js';
+import { designWebSearch } from '../tools/design-web-search-tool.js';
 
 
 

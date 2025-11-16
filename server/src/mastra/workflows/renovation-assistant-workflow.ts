@@ -1,10 +1,10 @@
 import { createStep, createWorkflow } from '@mastra/core';
 import { generateText } from 'ai';
-import { geminiFasttModel } from '../llms';
+import { geminiFasttModel } from '../llms/index.js';
 import { z } from 'zod';
-import { renovationOrchestrationPrompt } from './prompts';
-import { designAgent } from '../agents/design-agent';
-import { budgetAgent } from '../agents/budget-agent';
+import { renovationOrchestrationPrompt } from './prompts.js';
+import { designAgent } from '../agents/design-agent.js';
+import { budgetAgent } from '../agents/budget-agent.js';
 
 
 export const OrchestrationStepInputSchema = z.object({
