@@ -1,5 +1,5 @@
-import { designAgent } from "./design-agent";
-import { budgetAgent } from "./budget-agent";
+import { designAgent } from "./design-agent.js";
+import { budgetAgent } from "./budget-agent.js";
 
 export const agents = {
     designAgent,
