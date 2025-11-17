@@ -1,13 +1,11 @@
 import { SignedIn, SignedOut, SignIn, UserButton } from "@clerk/clerk-react";
 import { AppRoutes } from "@app/routes";
-import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function App() {
   return (
     <>
       <SignedIn>
         <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
-          <ThemeToggle />
           <UserButton afterSignOutUrl="/" />
         </div>
         <AppRoutes />

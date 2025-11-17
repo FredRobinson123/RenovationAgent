@@ -49,9 +49,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
     >
       <div
         className={cn(
-          "max-w-[85%] shadow-sm transition-colors",
+          "max-w-[85%] transition-colors",
           isUser
-            ? "bg-bubble-user text-bubble-user-foreground border border-bubble-user-border"
+            ? "shadow-sm bg-bubble-user text-bubble-user-foreground border border-bubble-user-border"
             : "bg-bubble-agent text-bubble-agent-foreground border border-bubble-agent-border"
         )}
         style={{
