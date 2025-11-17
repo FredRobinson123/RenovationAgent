@@ -5,6 +5,7 @@ import type { ChatMessage as ChatMessageType } from "@/features/chat/types";
 import { SpreadsheetViewer } from "@/features/chat/widgets/SpreadsheetViewer";
 import { ImageGallery } from "@/features/chat/widgets/ImageGallery";
 import { designSystem } from "@/theme/designSystem";
+import ReactMarkdown from "react-markdown";
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -70,8 +71,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
           </div>
         )}
 
-        <div className="text-base leading-relaxed whitespace-pre-wrap" data-testid="text-message-content">
-          {message.content}
+        <div
+          className="text-base leading-relaxed whitespace-pre-wrap"
+          data-testid="text-message-content"
+        >
+          <ReactMarkdown>{message.content}</ReactMarkdown>
         </div>
 
         {message.imageGallery && !isUser && (
