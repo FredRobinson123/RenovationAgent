@@ -125,6 +125,39 @@ test('handleWorkflowRunRequest surfaces string results as finalResponse', async 
   assert.strictEqual(record.body?.finalResponse, 'Plain text result from workflow');
 });
 
+test('handleWorkflowRunRequest derives finalResponse from step output text', async () => {
+  const logger = createLoggerStub();
+  const workflow: WorkflowInstance = {
+    start: async () => ({
+      status: 'success',
+      result: {},
+      steps: {
+        'invoke-budget-agent': {
+          output: {
+            text: 'Step generated response',
+          },
+        },
+      },
+    }),
+  };
+  const runner = createWorkflowRunner({
+    logger,
+    workflowTimeoutMs: 50,
+    resolveWorkflowInstance: async () => workflow,
+  });
+
+  const { res, record } = createMockResponse();
+  await runner.handleWorkflowRunRequest(
+    'workflow-step-result',
+    createJsonRequest({ inputData: { foo: 'bar' } }),
+    res,
+    { userId: 'user_6' }
+  );
+
+  assert.strictEqual(record.statusCode, 200);
+  assert.strictEqual(record.body?.finalResponse, 'Step generated response');
+});
+
 test('handleWorkflowRunRequest responds 504 when workflow times out', async () => {
   const logger = createLoggerStub();
   const workflow: WorkflowInstance = {

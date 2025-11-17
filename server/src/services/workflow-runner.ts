@@ -129,7 +129,8 @@ export function createWorkflowRunner({ logger, workflowTimeoutMs, resolveWorkflo
         status: runResult.status,
       });
 
-      const finalResponse = extractFinalResponse(runResult.result) ?? '';
+      const finalResponse =
+        extractFinalResponse(runResult.result) ?? extractFinalResponseFromSteps(runResult.steps) ?? '';
 
       sendJson(res, 200, {
         workflowId,
@@ -166,8 +167,7 @@ export function createWorkflowRunner({ logger, workflowTimeoutMs, resolveWorkflo
 
 function extractFinalResponse(result: unknown): string | undefined {
   if (typeof result === 'string') {
-    const trimmed = result.trim();
-    return trimmed || undefined;
+    return coerceString(result);
   }
 
   if (!result || typeof result !== 'object') {
@@ -176,27 +176,68 @@ function extractFinalResponse(result: unknown): string | undefined {
 
   const resultRecord = result as Record<string, unknown>;
 
-  if (typeof resultRecord.finalResponse === 'string') {
-    const trimmed = resultRecord.finalResponse.trim();
-    if (trimmed) {
-      return trimmed;
-    }
+  const direct = coerceString(resultRecord.finalResponse);
+  if (direct) {
+    return direct;
   }
 
   const output = resultRecord.output;
-  if (output && typeof output === 'object' && typeof (output as Record<string, unknown>).finalResponse === 'string') {
-    const trimmed = ((output as Record<string, unknown>).finalResponse as string).trim();
-    if (trimmed) {
-      return trimmed;
+  if (output && typeof output === 'object') {
+    const outputRecord = output as Record<string, unknown>;
+    const outputFinal = coerceString(outputRecord.finalResponse);
+    if (outputFinal) {
+      return outputFinal;
+    }
+
+    const outputText = coerceString(outputRecord.text);
+    if (outputText) {
+      return outputText;
     }
   }
 
-  if (typeof resultRecord.text === 'string') {
-    const trimmed = resultRecord.text.trim();
-    if (trimmed) {
-      return trimmed;
+  const text = coerceString(resultRecord.text);
+  if (text) {
+    return text;
+  }
+
+  return undefined;
+}
+
+function extractFinalResponseFromSteps(steps: unknown): string | undefined {
+  if (!steps || typeof steps !== 'object') {
+    return undefined;
+  }
+
+  const stepEntries = Object.values(steps as Record<string, unknown>);
+  for (const step of stepEntries) {
+    if (!step || typeof step !== 'object') {
+      continue;
+    }
+    const stepRecord = step as Record<string, unknown>;
+
+    const stepDirect = coerceString(stepRecord.finalResponse) ?? coerceString(stepRecord.text);
+    if (stepDirect) {
+      return stepDirect;
+    }
+
+    const output = stepRecord.output;
+    if (output && typeof output === 'object') {
+      const outputRecord = output as Record<string, unknown>;
+      const fromOutput = coerceString(outputRecord.finalResponse) ?? coerceString(outputRecord.text);
+      if (fromOutput) {
+        return fromOutput;
+      }
     }
   }
 
   return undefined;
 }
+
+function coerceString(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed || undefined;
+}
+
