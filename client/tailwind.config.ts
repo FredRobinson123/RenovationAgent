@@ -100,6 +100,7 @@ const config: Config = {
         serif: ["var(--font-serif)", "serif"],
         mono: ["var(--font-mono)", "monospace"],
         playful: ["'DM Sans'", "var(--font-sans)", "sans-serif"],
+        ren: ["var(--font-ren)", "serif"],
       },
       keyframes: {
         "accordion-down": {

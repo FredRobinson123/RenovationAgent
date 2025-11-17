@@ -2,9 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'LinBiolinum';
+  src: url('./assets/fonts/linbiolinum_r.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* LIGHT MODE */
 :root {
-  --color-soft-linen: 34 24% 94%;
+  --color-soft-linen: 39 44% 94%;
   --color-clay: 35 22% 83%;
   --color-charcoal-taupe: 37 6% 27%;
   --color-faded-clay: 18 35% 57%;
@@ -81,13 +89,13 @@
   --chart-4: 28 46% 64%;
   --chart-5: 45 35% 62%;
 
-  --bubble-agent: var(--color-clay);
+  --bubble-agent: var(--background);
   --bubble-agent-foreground: var(--color-charcoal-taupe);
-  --bubble-agent-border: 35 24% 76%;
+  --bubble-agent-border: var(--background);
 
-  --bubble-user: 18 35% 90%;
+  --bubble-user: 37 24% 85%;
   --bubble-user-foreground: var(--color-charcoal-taupe);
-  --bubble-user-border: 18 35% 80%;
+  --bubble-user-border: 37 24% 85%;
 
   --widget: var(--color-faded-clay);
   --widget-foreground: 32 45% 97%;
@@ -95,6 +103,7 @@
 
   --font-sans: 'Inter', 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   --font-serif: Georgia, serif;
+  --font-ren: 'LinBiolinum', var(--font-serif);
   --font-mono: 'SF Mono', Menlo, Monaco, Consolas, monospace;
   --radius: .75rem;
   --shadow-2xs: 0px 1px 2px 0px hsl(var(--foreground) / 0.04);
@@ -140,6 +149,7 @@
 }
 
 .dark {
+  --font-ren: 'LinBiolinum', var(--font-serif);
   --button-outline: rgba(244, 241, 237, 0.15);
   --badge-outline: rgba(244, 241, 237, 0.08);
 
@@ -211,13 +221,13 @@
   --chart-4: 28 45% 58%;
   --chart-5: 45 32% 60%;
 
-  --bubble-agent: 26 16% 22%;
+  --bubble-agent: var(--background);
   --bubble-agent-foreground: 34 32% 92%;
-  --bubble-agent-border: 26 16% 28%;
+  --bubble-agent-border: var(--background);
 
-  --bubble-user: 18 35% 40%;
+  --bubble-user: 37 24% 35%;
   --bubble-user-foreground: 34 45% 96%;
-  --bubble-user-border: 18 35% 46%;
+  --bubble-user-border: 37 24% 41%;
 
   --widget: 18 35% 42%;
   --widget-foreground: 34 45% 96%;
