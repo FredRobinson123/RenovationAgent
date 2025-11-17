@@ -1,6 +1,7 @@
 import { mastra } from '../mastra/index.js';
 import { workflows } from '../mastra/workflows/index.js';
 import type { JsonRecord } from '../types.js';
+import { logger } from '../utils/pino-logger.js';
 
 export type WorkflowInstance = {
   id?: string;
@@ -39,26 +40,75 @@ export function listWorkflowKeys(): string[] {
 
 export async function resolveWorkflowInstance(workflowId: string): Promise<WorkflowInstance | undefined> {
   if (!workflowId) {
+    logger.warn('resolveWorkflowInstance called without workflowId');
     return undefined;
   }
 
-  const candidate =
-    workflowRegistryById[workflowId] ??
-    workflowRegistryByName[workflowId] ??
-    (typeof mastra.getWorkflowById === 'function' ? mastra.getWorkflowById(workflowId) : undefined);
+  const startedAt = Date.now();
+  logger.debug('Resolving workflow instance', {
+    workflowId,
+  });
+
+  let candidateSource: 'byId' | 'byName' | 'mastra' | 'unknown' = 'unknown';
+
+  let candidate: WorkflowInstance | Promise<WorkflowInstance> | undefined =
+    workflowRegistryById[workflowId] ?? workflowRegistryByName[workflowId];
+
+  if (candidate) {
+    candidateSource = candidate === workflowRegistryById[workflowId] ? 'byId' : 'byName';
+  } else if (typeof mastra.getWorkflowById === 'function') {
+    try {
+      candidate = mastra.getWorkflowById(workflowId) as WorkflowInstance | Promise<WorkflowInstance>;
+      candidateSource = 'mastra';
+    } catch (error) {
+      logger.error('mastra.getWorkflowById threw an error', {
+        workflowId,
+        err: error instanceof Error ? { message: error.message, stack: error.stack } : error,
+      });
+      throw error;
+    }
+  }
 
   if (!candidate) {
+    logger.warn('Workflow instance not found in registry', {
+      workflowId,
+    });
     return undefined;
   }
 
-  if (
+  const isPromiseLike =
     typeof candidate === 'object' &&
     candidate !== null &&
     'then' in candidate &&
-    typeof (candidate as { then?: unknown }).then === 'function'
-  ) {
-    return (await candidate) as WorkflowInstance;
+    typeof (candidate as { then?: unknown }).then === 'function';
+
+  let resolvedCandidate: WorkflowInstance;
+  if (isPromiseLike) {
+    logger.debug('Awaiting async workflow instance', {
+      workflowId,
+      source: candidateSource,
+    });
+    try {
+      resolvedCandidate = await candidate;
+    } catch (error) {
+      logger.error('Failed to resolve async workflow instance', {
+        workflowId,
+        source: candidateSource,
+        err: error instanceof Error ? { message: error.message, stack: error.stack } : error,
+      });
+      throw error;
+    }
+  } else {
+    resolvedCandidate = candidate as WorkflowInstance;
   }
 
-  return candidate as WorkflowInstance;
+  logger.debug('Workflow instance resolution finished', {
+    workflowId,
+    source: candidateSource,
+    durationMs: Date.now() - startedAt,
+    hasStartFn: typeof resolvedCandidate?.start === 'function',
+    exportedWorkflowId: resolvedCandidate?.id,
+  });
+
+  return resolvedCandidate;
 }
