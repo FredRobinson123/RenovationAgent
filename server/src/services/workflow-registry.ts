@@ -13,6 +13,18 @@ export type WorkflowInstance = {
   }>;
 };
 
+type MastraWorkflowLike = {
+  id?: string;
+  createRunAsync?: () => Promise<{
+    start: (args: { inputData: JsonRecord }) => Promise<{
+      status: string;
+      result: unknown;
+      steps?: Record<string, unknown>;
+      resumeLabels?: Record<string, unknown>;
+    }>;
+  }>;
+};
+
 const workflowRegistryByName = workflows as unknown as Record<string, WorkflowInstance>;
 
 const workflowRegistryById: Record<string, WorkflowInstance> = Object.values(workflowRegistryByName).reduce(
@@ -36,6 +48,33 @@ export function listWorkflowIds(): string[] {
 
 export function listWorkflowKeys(): string[] {
   return Object.keys(workflowRegistryByName);
+}
+
+function wrapMastraWorkflow(candidate: MastraWorkflowLike | undefined, workflowId: string): WorkflowInstance | undefined {
+  if (!candidate || typeof candidate.createRunAsync !== 'function') {
+    return undefined;
+  }
+
+  logger.debug('Wrapping Mastra workflow using createRunAsync', {
+    workflowId,
+    exportedWorkflowId: candidate.id,
+  });
+
+  const runFactory = candidate;
+
+  return {
+    id: runFactory.id ?? workflowId,
+    async start(args) {
+      const runCreator = runFactory.createRunAsync;
+      if (typeof runCreator !== 'function') {
+        throw new Error(`Workflow "${workflowId}" no longer exposes createRunAsync`);
+      }
+      const run = await runCreator.call(runFactory);
+      return run.start({
+        inputData: args.inputData,
+      });
+    },
+  };
 }
 
 export async function resolveWorkflowInstance(workflowId: string): Promise<WorkflowInstance | undefined> {
@@ -116,13 +155,30 @@ export async function resolveWorkflowInstance(workflowId: string): Promise<Workf
     resolvedCandidate = candidate as WorkflowInstance;
   }
 
+  let workflowInstance: WorkflowInstance | undefined;
+  if (typeof (resolvedCandidate as WorkflowInstance)?.start === 'function') {
+    workflowInstance = resolvedCandidate as WorkflowInstance;
+  } else {
+    workflowInstance = wrapMastraWorkflow(resolvedCandidate as MastraWorkflowLike, workflowId);
+  }
+
+  if (!workflowInstance) {
+    logger.error('Resolved workflow candidate is not executable', {
+      workflowId,
+      source: candidateSource,
+      hasStartFn: typeof (resolvedCandidate as WorkflowInstance)?.start === 'function',
+      hasCreateRunAsync: typeof (resolvedCandidate as MastraWorkflowLike)?.createRunAsync === 'function',
+    });
+    return undefined;
+  }
+
   logger.debug('Workflow instance resolution finished', {
     workflowId,
     source: candidateSource,
     durationMs: Date.now() - startedAt,
-    hasStartFn: typeof resolvedCandidate?.start === 'function',
-    exportedWorkflowId: resolvedCandidate?.id,
+    hasStartFn: typeof workflowInstance.start === 'function',
+    exportedWorkflowId: (workflowInstance as WorkflowInstance)?.id ?? (resolvedCandidate as { id?: string })?.id,
   });
 
-  return resolvedCandidate;
+  return workflowInstance;
 }
