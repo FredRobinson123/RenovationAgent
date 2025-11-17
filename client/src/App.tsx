@@ -1,33 +1,16 @@
 import { SignedIn, SignedOut, SignIn, UserButton } from "@clerk/clerk-react";
-import { Switch, Route } from "wouter";
-import { TooltipProvider } from "@/components/tooltip";
-import { Toaster } from "@/components/toaster";
+import { AppRoutes } from "@app/routes";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import Home from "@/pages/Home";
-import NotFound from "@/pages/not-found";
-
-function Router() {
-  return (
-    <Switch>
-      <Route path="/">
-        <Home />
-      </Route>
-      <Route component={NotFound} />
-    </Switch>
-  );
-}
 
 export default function App() {
   return (
-    <TooltipProvider>
-      <Toaster />
-
+    <>
       <SignedIn>
         <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
           <ThemeToggle />
           <UserButton afterSignOutUrl="/" />
         </div>
-        <Router />
+        <AppRoutes />
       </SignedIn>
 
       <SignedOut>
@@ -39,6 +22,6 @@ export default function App() {
           <SignIn appearance={{ elements: { formButtonPrimary: "bg-primary" } }} afterSignInUrl="/" />
         </div>
       </SignedOut>
-    </TooltipProvider>
+    </>
   );
 }

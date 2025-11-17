@@ -15,7 +15,7 @@ A renovation assistant agent built with Mastra that helps users with design and 
      - `CLERK_SECRET_KEY` – from the Clerk dashboard (API Keys tab)
      - Any agent-specific keys (`EXA_API_KEY`, `GEMINI_API_KEY`, etc.) you already use
    - Frontend: copy `client/env.example` → `client/.env` and populate:
-     - `VITE_SERVER_URL=http://localhost:5001`
+     - `VITE_SERVER_URL=http://localhost:5001` – switch this to your deployed API origin in Preview/Production.
      - `VITE_CLERK_PUBLISHABLE_KEY` – the publishable key from Clerk
    - In Clerk → **Allow list**, add:
      - Frontend origin: `http://localhost:5173`
@@ -34,6 +34,14 @@ A renovation assistant agent built with Mastra that helps users with design and 
    - Navigate to `http://localhost:5173`
    - Sign in with a Clerk user (create one in the dashboard if needed)
    - Send a chat message; the frontend forwards the Clerk session token to the backend, which verifies it before running the workflow.
+
+## Deploying to Vercel
+
+1. Deploy the backend (`server/`) first and note the public URL (e.g., `https://renovation-agent-server.vercel.app`).
+2. In the Vercel project for the frontend (`client/`), add the following Environment Variables for every environment you deploy:
+   - `VITE_SERVER_URL` → `https://your-backend-host`
+   - `VITE_CLERK_PUBLISHABLE_KEY` → the same publishable key used locally
+3. Redeploy the client so Vite inlines the environment variables. The client now defaults to the current browser origin if `VITE_SERVER_URL` is missing, but explicitly setting it prevents accidental calls to `localhost`.
 
 ## Project Structure
 

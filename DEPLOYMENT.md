@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This repo now ships with Docker images for both the API server (`server/`) and Vite client (`client/`). Use this document as the runbook for building those images locally and deploying them as separate Railway services.
+This project no longer uses Docker. Railway’s default build system (Nixpacks) can build each workspace directly from the Git repository, producing simple Node/Vite deployments without container plumbing.
 
 ## 1. Environments & prerequisites
 
@@ -27,62 +27,39 @@ This repo now ships with Docker images for both the API server (`server/`) and V
 
 > ⚠️ Secrets (`CLERK_SECRET_KEY`, API keys, Clerk publishable key) should be stored via Railway service variables, not committed locally.
 
-## 2. Server container (`server/Dockerfile`)
+### Frontend structure quick reference
 
-Multi-stage build outline:
+- `client/src/app` – application shell (providers, routes, layout chrome)
+- `client/src/features/chat` – all chat-specific pages, hooks, services, and widgets
+- `client/src/shared` – generic hooks/utilities reused across features
 
-1. **Builder** – installs workspace deps with `pnpm install --filter server... --frozen-lockfile`, copies `server/src`, and runs `pnpm --filter server... build` to emit `server/dist`.
-2. **Production deps** – re-installs only production dependencies (`--prod`) so the runtime stays slim.
-3. **Runtime** – copies `server/dist`, `package.json`, plus both the workspace-level and service-level `node_modules` trees (required because PNPM stores modules at the workspace root). Entry command is `node dist/index.js`.
+Keeping the chat domain isolated this way makes it easier to evolve without touching unrelated UI.
 
-Key usage notes:
+## 2. Server deployment (Railway service #1)
 
-```bash
-# Build (context must be repo root so pnpm workspace files are available)
-docker build -f server/Dockerfile . -t renovation-agent/server
+1. **Source** – point Railway at the repo root and set the service root to `server`.
+2. **Build command** – `pnpm install --frozen-lockfile && pnpm build`
+3. **Start command** – `pnpm start` (which runs `node dist/index.js`)
+4. **Environment** – set the variables from the table above. Railway supplies `PORT`; keep `HOST=0.0.0.0`.
+5. **Local testing** – run `pnpm --filter server... dev` for watch mode or `pnpm --filter server... build && node server/dist/index.js` for a production-like boot (remember to export `GEMINI_API_KEY`, `CLERK_SECRET_KEY`, etc.).
 
-# Run
-docker run --rm -p 5001:5001 \
-  -e PORT=5001 \
-  -e HOST=0.0.0.0 \
-  -e CLERK_SECRET_KEY=sk_live_... \
-  renovation-agent/server
-```
+## 3. Client deployment (Railway service #2)
 
-The container expects Railway to supply `PORT`; locally you can expose whichever port you prefer. Because the local sandbox does not provide Docker, these commands were not executed here—run them in your own environment to validate.
+1. **Source** – same repo, service root `client`.
+2. **Build command** – `pnpm install --frozen-lockfile && pnpm build`
+3. **Start command** – `pnpm preview -- --host 0.0.0.0 --port ${PORT}`
+4. **Environment** – set `VITE_SERVER_URL` to the server’s public URL (Railway exposes it as `${{SERVER.RAILWAY_PUBLIC_DOMAIN}}`) and provide the Clerk publishable key + timeout value.
+5. **Local testing** – `pnpm --filter client... dev` or `pnpm --filter client... preview -- --host 0.0.0.0 --port 4173`.
 
-## 3. Client container (`client/Dockerfile`)
+## 4. Railway workflow (no Docker)
 
-Stages:
-
-1. **Builder** – installs workspace deps filtered to `client`, copies the app, and runs `pnpm --filter client... build` to emit `client/dist`.
-2. **Runtime** – lightweight `nginx:1.27-alpine` with a template config (`client/nginx.conf.template`). Railway’s entrypoint automatically substitutes `${PORT}` into the template so the container listens on whatever port the platform provides.
-
-Usage:
-
-```bash
-docker build -f client/Dockerfile . -t renovation-agent/client
-
-docker run --rm -p 4173:4173 \
-  -e PORT=4173 \
-  -e VITE_SERVER_URL=http://localhost:5001 \
-  -e VITE_CLERK_PUBLISHABLE_KEY=pk_live_... \
-  renovation-agent/client
-```
-
-Rebuild whenever `VITE_*` values change; they are baked at build time.
-
-## 4. Railway configuration
-
-- `railway.json` (config version `2`) describes two services that build straight from the Dockerfiles in this repo. Railway automatically discovers the Dockerfiles when you run `railway up` or connect the GitHub repository.
-- Add both services to the same Railway project so they share private networking.
-- Suggested workflow:
+- Create a Railway project and add two services (server/client) as described above.
+- Railway’s auto-detected Node builder (Nixpacks) will install PNPM, honor the provided commands, and keep the deployment simple.
+- CLI workflow:
   1. `railway login`
-  2. `railway link` (select or create the RenovationAgent project)
-  3. `railway up` (picks up `railway.json`, builds both containers, and provisions services)
-- Inside the Railway dashboard, set service variables:
-  - **Server** – fill all keys from the environment table above. Railway supplies `PORT` automatically; keep `HOST=0.0.0.0`.
-  - **Client** – set `VITE_SERVER_URL=https://<server-public-domain>` (no trailing slash) and the Clerk publishable key. You can reference another service’s domain using `${{SERVER.RAILWAY_PUBLIC_DOMAIN}}`.
+  2. `railway link` (pick the project)
+  3. `railway up` (select the service you want to deploy, repeat for the other)
+- After each deploy, confirm logs show `pnpm build` followed by the appropriate start command—no containers involved.
 
 ### Deployment checks
 
@@ -96,13 +73,9 @@ Rebuild whenever `VITE_*` values change; they are baked at build time.
 - Use Railway’s “Deployments” tab to redeploy a previous image if a release fails.
 - Scale worker counts independently from the “Settings → Deployments” panel or via `railway scale`.
 
-## 5. Optional local orchestration
+## 5. Troubleshooting
 
-If you want local parity with the Railway topology, create a `docker-compose.yml` that references the two images built above, wiring the client’s `VITE_SERVER_URL` to `http://server:5001`. This isn’t required for production but can simplify QA.
-
-## 6. Troubleshooting
-
-- **Docker missing locally** – install Docker Desktop or run builds in CI. The workstation used here does not expose Docker, so no images were built during this change set.
-- **PNPM workspace context** – always build from the repo root so the workspace lockfile and configs are available inside the Docker context.
-- **CORS errors in prod** – the server sets `Access-Control-Allow-Origin: *`, so as long as the client points to the correct server domain the browser should succeed. Double-check `VITE_SERVER_URL` if requests fail.
+- **Builds time out** – ensure `pnpm-lock.yaml` is up to date and each `package.json` has the right scripts (`build`, `start`, `preview`). Railway caches `.pnpm-store`, so subsequent deploys are faster.
+- **Missing env vars** – both services fail fast if required keys are absent (e.g., `GEMINI_API_KEY`). Add them via Railway’s “Variables” tab.
+- **Client hitting wrong API URL** – double-check `VITE_SERVER_URL` (no trailing slash) and redeploy the client whenever it changes; the value is baked at build time.
 

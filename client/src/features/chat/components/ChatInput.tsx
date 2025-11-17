@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/button";
 import { Textarea } from "@/components/textarea";
 import { Send } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@shared/lib/utils";
 
 interface ChatInputProps {
   onSendMessage: (content: string) => Promise<void> | void;

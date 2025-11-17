@@ -1,5 +1,5 @@
 import type { DesignImageGallery } from "@/features/chat/types";
-import { cn } from "@/lib/utils";
+import { cn } from "@shared/lib/utils";
 import { designSystem } from "@/theme/designSystem";
 
 interface ImageGalleryProps {

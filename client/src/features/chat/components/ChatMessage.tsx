@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@shared/lib/utils";
 import { Badge } from "@/components/badge";
 import { Palette, PoundSterling, Sparkles } from "lucide-react";
 import type { ChatMessage as ChatMessageType } from "@/features/chat/types";
