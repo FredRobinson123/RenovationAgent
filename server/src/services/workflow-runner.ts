@@ -129,9 +129,12 @@ export function createWorkflowRunner({ logger, workflowTimeoutMs, resolveWorkflo
         status: runResult.status,
       });
 
+      const finalResponse = extractFinalResponse(runResult.result) ?? '';
+
       sendJson(res, 200, {
         workflowId,
         status: runResult.status,
+        finalResponse,
         result: runResult.result,
         metadata: {
           steps: Object.keys(runResult.steps ?? {}),
@@ -159,4 +162,41 @@ export function createWorkflowRunner({ logger, workflowTimeoutMs, resolveWorkflo
     executeWorkflowWithTimeout,
     handleWorkflowRunRequest,
   };
+}
+
+function extractFinalResponse(result: unknown): string | undefined {
+  if (typeof result === 'string') {
+    const trimmed = result.trim();
+    return trimmed || undefined;
+  }
+
+  if (!result || typeof result !== 'object') {
+    return undefined;
+  }
+
+  const resultRecord = result as Record<string, unknown>;
+
+  if (typeof resultRecord.finalResponse === 'string') {
+    const trimmed = resultRecord.finalResponse.trim();
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+
+  const output = resultRecord.output;
+  if (output && typeof output === 'object' && typeof (output as Record<string, unknown>).finalResponse === 'string') {
+    const trimmed = ((output as Record<string, unknown>).finalResponse as string).trim();
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+
+  if (typeof resultRecord.text === 'string') {
+    const trimmed = resultRecord.text.trim();
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+
+  return undefined;
 }

@@ -67,7 +67,7 @@ test('handleWorkflowRunRequest executes workflow and returns metadata', async ()
       receivedInput = inputData;
       return {
         status: 'success',
-        result: { ok: true },
+        result: { ok: true, finalResponse: 'Response from workflow' },
         steps: { first: true },
         resumeLabels: { checkpoint: 'one' },
       };
@@ -89,6 +89,7 @@ test('handleWorkflowRunRequest executes workflow and returns metadata', async ()
 
   assert.strictEqual(record.statusCode, 200);
   assert.strictEqual(record.body?.status, 'success');
+  assert.strictEqual(record.body?.finalResponse, 'Response from workflow');
   assert.deepStrictEqual(record.body?.metadata, {
     steps: ['first'],
     resumeLabels: { checkpoint: 'one' },
@@ -96,6 +97,32 @@ test('handleWorkflowRunRequest executes workflow and returns metadata', async ()
   assert.ok(receivedInput);
   assert.strictEqual(receivedInput?.userId, 'user_2');
   assert.strictEqual(receivedInput?.userEmail, 'user@example.com');
+});
+
+test('handleWorkflowRunRequest surfaces string results as finalResponse', async () => {
+  const logger = createLoggerStub();
+  const workflow: WorkflowInstance = {
+    start: async () => ({
+      status: 'success',
+      result: 'Plain text result from workflow',
+    }),
+  };
+  const runner = createWorkflowRunner({
+    logger,
+    workflowTimeoutMs: 50,
+    resolveWorkflowInstance: async () => workflow,
+  });
+
+  const { res, record } = createMockResponse();
+  await runner.handleWorkflowRunRequest(
+    'workflow-string-result',
+    createJsonRequest({ inputData: { foo: 'bar' } }),
+    res,
+    { userId: 'user_5' }
+  );
+
+  assert.strictEqual(record.statusCode, 200);
+  assert.strictEqual(record.body?.finalResponse, 'Plain text result from workflow');
 });
 
 test('handleWorkflowRunRequest responds 504 when workflow times out', async () => {

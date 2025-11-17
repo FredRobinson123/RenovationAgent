@@ -130,9 +130,17 @@ export async function runRenovationWorkflow(
   }
 
   const record = data as Record<string, unknown>;
-  const result = record?.result as Record<string, unknown> | undefined;
-  const finalResponse = result?.finalResponse;
-  if (typeof finalResponse !== "string" || !finalResponse.trim()) {
+  const rawResult = record?.result;
+  const resultRecord = isJsonRecord(rawResult) ? rawResult : undefined;
+  const outputRecord = isJsonRecord(resultRecord?.output) ? (resultRecord.output as Record<string, unknown>) : undefined;
+
+  const finalResponse =
+    pickString(record.finalResponse) ??
+    pickString(resultRecord?.finalResponse) ??
+    pickString(outputRecord?.finalResponse) ??
+    (typeof rawResult === "string" ? pickString(rawResult) : undefined);
+
+  if (!finalResponse) {
     throw new Error("Workflow did not return a usable response.");
   }
 
@@ -168,5 +176,17 @@ export function buildFriendlyErrorMessage(error: unknown): string {
   }
 
   return defaultMessage;
+}
+
+function pickString(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed || undefined;
+}
+
+function isJsonRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
