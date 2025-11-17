@@ -58,7 +58,8 @@ export async function resolveWorkflowInstance(workflowId: string): Promise<Workf
     candidateSource = candidate === workflowRegistryById[workflowId] ? 'byId' : 'byName';
   } else if (typeof mastra.getWorkflowById === 'function') {
     try {
-      candidate = mastra.getWorkflowById(workflowId) as WorkflowInstance | Promise<WorkflowInstance>;
+      const mastraWorkflow = mastra.getWorkflowById(workflowId) as unknown;
+      candidate = mastraWorkflow as WorkflowInstance | Promise<WorkflowInstance>;
       candidateSource = 'mastra';
     } catch (error) {
       logger.error('mastra.getWorkflowById threw an error', {
