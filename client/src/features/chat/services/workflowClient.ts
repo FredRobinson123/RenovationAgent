@@ -6,10 +6,34 @@ const WORKFLOW_ID = "renovation-workflow";
 const LOCALHOST_SERVER_URL = "http://localhost:5001";
 const RUNTIME_ORIGIN =
   typeof window !== "undefined" && window.location?.origin ? window.location.origin : undefined;
-const API_BASE_URL = (import.meta.env.VITE_SERVER_URL ?? RUNTIME_ORIGIN ?? LOCALHOST_SERVER_URL).replace(
-  /\/$/,
-  ""
-);
+
+const normalizeBaseUrl = (rawUrl: unknown): string => {
+  const fallback = LOCALHOST_SERVER_URL;
+  if (typeof rawUrl !== "string") {
+    return fallback;
+  }
+
+  const trimmed = rawUrl.trim().replace(/\/$/, "");
+  if (!trimmed) {
+    return fallback;
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith("//")) {
+    return `https:${trimmed}`;
+  }
+
+  if (/^(localhost|\d{1,3}(?:\.\d{1,3}){3})(?::\d+)?/i.test(trimmed)) {
+    return `http://${trimmed}`;
+  }
+
+  return `https://${trimmed}`;
+};
+
+const API_BASE_URL = normalizeBaseUrl(import.meta.env.VITE_SERVER_URL ?? RUNTIME_ORIGIN ?? LOCALHOST_SERVER_URL);
 const WORKFLOW_ENDPOINT = `${API_BASE_URL}/api/workflows/${WORKFLOW_ID}/run`;
 const WORKFLOW_REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_WORKFLOW_TIMEOUT_MS ?? 60_000);
 
