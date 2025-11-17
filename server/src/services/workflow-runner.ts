@@ -49,14 +49,41 @@ export function createWorkflowRunner({ logger, workflowTimeoutMs, resolveWorkflo
     res: ServerResponse,
     authUser: AuthenticatedUser
   ) {
+    logger.debug('Handling workflow run request', {
+      workflowId,
+      method: req.method,
+      contentType: req.headers['content-type'],
+      contentLength: req.headers['content-length'],
+      userId: authUser.userId,
+    });
+
     const workflow = await resolveWorkflowInstance(workflowId);
 
     if (!workflow || typeof workflow.start !== 'function') {
+      logger.warn('Requested workflow could not be resolved', {
+        workflowId,
+        workflowResolved: Boolean(workflow),
+        hasStartFn: Boolean(workflow && typeof workflow.start === 'function'),
+      });
       sendJson(res, 404, { error: `Workflow "${workflowId}" not found` });
       return;
     }
+    logger.debug('Workflow instance resolved', {
+      workflowId,
+      resolvedById: typeof workflow.id === 'string' ? workflow.id === workflowId : undefined,
+      exportedWorkflowId: workflow.id,
+    });
 
-    const body = await readJsonBody(req, logger);
+    let body: JsonRecord | undefined;
+    try {
+      body = await readJsonBody(req, logger);
+    } catch (error) {
+      logger.warn('Failed to read workflow request body', {
+        workflowId,
+        err: error instanceof Error ? { message: error.message, stack: error.stack } : error,
+      });
+      throw error;
+    }
     const inputData = (body?.inputData ?? body) as JsonRecord | undefined;
 
     if (!inputData || typeof inputData !== 'object' || Array.isArray(inputData)) {
@@ -68,6 +95,12 @@ export function createWorkflowRunner({ logger, workflowTimeoutMs, resolveWorkflo
       sendJson(res, 400, { error: 'Request must include input data for the workflow' });
       return;
     }
+
+    logger.debug('Workflow input accepted', {
+      workflowId,
+      inputKeys: Object.keys(inputData),
+      hasUserMetadata: Boolean((inputData as JsonRecord).userId || (inputData as JsonRecord).userEmail),
+    });
 
     const workflowInput: JsonRecord = {
       ...inputData,
