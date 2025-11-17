@@ -77,14 +77,20 @@ export async function resolveWorkflowInstance(workflowId: string): Promise<Workf
     return undefined;
   }
 
-  const isPromiseLike =
+  const looksThenable =
     typeof candidate === 'object' &&
     candidate !== null &&
     'then' in candidate &&
     typeof (candidate as { then?: unknown }).then === 'function';
+  const treatAsPromise =
+    looksThenable &&
+    'catch' in candidate &&
+    typeof (candidate as { catch?: unknown }).catch === 'function' &&
+    'finally' in candidate &&
+    typeof (candidate as { finally?: unknown }).finally === 'function';
 
   let resolvedCandidate: WorkflowInstance;
-  if (isPromiseLike) {
+  if (treatAsPromise) {
     logger.debug('Awaiting async workflow instance', {
       workflowId,
       source: candidateSource,
@@ -100,6 +106,13 @@ export async function resolveWorkflowInstance(workflowId: string): Promise<Workf
       throw error;
     }
   } else {
+    if (looksThenable && !treatAsPromise) {
+      logger.debug('Workflow candidate exposes then() but is not awaited', {
+        workflowId,
+        source: candidateSource,
+        candidateType: candidate?.constructor?.name,
+      });
+    }
     resolvedCandidate = candidate as WorkflowInstance;
   }
 
