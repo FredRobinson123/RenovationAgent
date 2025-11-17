@@ -26,8 +26,17 @@ export const BudgetSpreadsheetSchema = z.object({
 export type BudgetSpreadsheet = z.infer<typeof BudgetSpreadsheetSchema>;
 
 
-export const createBudgetSpreadsheet = createTool({
-    id: 'create_budget_spreadsheet',
+export const BudgetAgentReplySchema = z.object({
+    messageForCustomer: z.string().min(1, 'messageForCustomer must include the narrative response'),
+    spreadsheet: BudgetSpreadsheetSchema.optional().nullable(),
+});
+
+
+export type BudgetAgentReply = z.infer<typeof BudgetAgentReplySchema>;
+
+
+export const generateBudgetSpreadsheet = createTool({
+    id: 'generate_budget_spreadsheet',
     description: 'Generates a formatted budget spreadsheet from a structured budget object.',
     inputSchema: z.object({
         project_name: z.string().describe('Name of the project'),

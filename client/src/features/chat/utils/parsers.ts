@@ -1,6 +1,11 @@
 import type { BudgetSpreadsheet, DesignImageGallery } from "@features/chat/types";
 import { isBudgetSpreadsheet, isDesignImageGallery } from "./guards";
 
+export type BudgetAgentPayload = {
+  messageForCustomer: string;
+  spreadsheet?: BudgetSpreadsheet;
+};
+
 export function extractJsonPayload(text: string): string | undefined {
   const fencedMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fencedMatch) {
@@ -70,6 +75,11 @@ export function tryParseImageGallery(text: string): DesignImageGallery | undefin
 }
 
 export function tryParseBudgetSpreadsheet(text: string): BudgetSpreadsheet | undefined {
+  const payload = tryParseBudgetAgentPayload(text);
+  if (payload?.spreadsheet) {
+    return payload.spreadsheet;
+  }
+
   const candidate = extractJsonPayload(text);
   if (!candidate) {
     return undefined;
@@ -83,5 +93,36 @@ export function tryParseBudgetSpreadsheet(text: string): BudgetSpreadsheet | und
     console.warn("Failed to parse budget spreadsheet JSON", error);
   }
   return undefined;
+}
+
+export function tryParseBudgetAgentPayload(text: string): BudgetAgentPayload | undefined {
+  const candidate = extractJsonPayload(text);
+  if (!candidate) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(candidate);
+    if (!parsed || typeof parsed !== "object") {
+      return undefined;
+    }
+
+    const record = parsed as Record<string, unknown>;
+    const message = typeof record.messageForCustomer === "string" ? record.messageForCustomer.trim() : "";
+    if (!message) {
+      return undefined;
+    }
+
+    const payload: BudgetAgentPayload = { messageForCustomer: message };
+
+    if (isBudgetSpreadsheet(record.spreadsheet)) {
+      payload.spreadsheet = record.spreadsheet;
+    }
+
+    return payload;
+  } catch (error) {
+    console.warn("Failed to parse budget agent payload JSON", error);
+    return undefined;
+  }
 }
 

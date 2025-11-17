@@ -1,6 +1,12 @@
-import { extractErrorMessage, tryParseBudgetSpreadsheet, tryParseImageGallery } from "@features/chat/utils/parsers";
+import {
+  extractErrorMessage,
+  tryParseBudgetAgentPayload,
+  tryParseBudgetSpreadsheet,
+  tryParseImageGallery,
+} from "@features/chat/utils/parsers";
 import type { ChatMessage } from "@features/chat/types";
 import type { BudgetSpreadsheet, DesignImageGallery } from "@features/chat/types";
+import { isBudgetSpreadsheet } from "@features/chat/utils/guards";
 
 const WORKFLOW_ID = "renovation-workflow";
 const LOCALHOST_SERVER_URL = "http://localhost:5001";
@@ -144,10 +150,19 @@ export async function runRenovationWorkflow(
     throw new Error("Workflow did not return a usable response.");
   }
 
+  const rawFinalResponse = finalResponse;
+  const payload = tryParseBudgetAgentPayload(rawFinalResponse);
+  const normalizedFinalResponse = payload?.messageForCustomer ?? rawFinalResponse;
+
+  const serverSpreadsheet =
+    pickBudgetSpreadsheet(record) ??
+    pickBudgetSpreadsheet(resultRecord) ??
+    pickBudgetSpreadsheet(outputRecord);
+
   return {
-    finalResponse,
-    budgetSpreadsheet: tryParseBudgetSpreadsheet(finalResponse),
-    imageGallery: tryParseImageGallery(finalResponse),
+    finalResponse: normalizedFinalResponse,
+    budgetSpreadsheet: serverSpreadsheet ?? payload?.spreadsheet ?? tryParseBudgetSpreadsheet(rawFinalResponse),
+    imageGallery: tryParseImageGallery(rawFinalResponse),
   };
 }
 
@@ -188,5 +203,18 @@ function pickString(value: unknown): string | undefined {
 
 function isJsonRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function pickBudgetSpreadsheet(container: Record<string, unknown> | undefined): BudgetSpreadsheet | undefined {
+  if (!container) {
+    return undefined;
+  }
+
+  const candidate = container.budgetSpreadsheet ?? container.spreadsheet;
+  if (isBudgetSpreadsheet(candidate)) {
+    return candidate;
+  }
+
+  return undefined;
 }
 

@@ -3,7 +3,7 @@ import { Memory } from '@mastra/memory';
 import { LibSQLStore } from '@mastra/libsql';
 import { geminiFasttModel } from '../llms/index.js';
 import { budgetAgentSystemPrompt } from './prompts.js';
-import { createBudgetSpreadsheet } from '../tools/create-budget-spreadsheet-tool.js';
+import { generateBudgetSpreadsheet } from '../tools/create-budget-spreadsheet-tool.js';
 
 
 
@@ -13,7 +13,7 @@ export const budgetAgent = new Agent({
    instructions: budgetAgentSystemPrompt,
    model: geminiFasttModel,
    tools: {
-    createBudgetSpreadsheet,
+    generateBudgetSpreadsheet,
    },
    defaultGenerateOptions: {
        toolChoice: 'auto', // https://ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling#tool-choice

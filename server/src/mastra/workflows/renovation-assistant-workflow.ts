@@ -1,6 +1,7 @@
 import { createStep, createWorkflow } from '@mastra/core';
 import { generateText } from 'ai';
 import { geminiFasttModel } from '../llms/index.js';
+import { BudgetAgentReplySchema, BudgetSpreadsheetSchema, type BudgetAgentReply } from '../tools/create-budget-spreadsheet-tool.js';
 import { z } from 'zod';
 import { renovationOrchestrationPrompt } from './prompts.js';
 import { designAgent } from '../agents/design-agent.js';
@@ -94,11 +95,17 @@ const orchestrationStep = createStep({
 });
 
 
+const BudgetAgentStepOutputSchema = z.object({
+  text: z.string(),
+  structured: BudgetAgentReplySchema.optional(),
+});
+
+
 const budgetAgentStep = createStep({
   id: 'invoke-budget-agent',
   description: 'Invokes the budget agent for renovation workflow.',
   inputSchema: OrchestrationStepOutputSchema,
-  outputSchema: z.object({ text: z.string() }),
+  outputSchema: BudgetAgentStepOutputSchema,
   execute: async ({ inputData }) => {
     const { latestCustomerMessage, conversationHistory } = inputData;
     // Build the message for the agent
@@ -113,10 +120,14 @@ const budgetAgentStep = createStep({
 
     // Generate response using the budgetAgent
     const response = await budgetAgent.generate(message);
+    const rawText = response.text || '';
+    const structured = tryParseBudgetAgentReply(rawText);
+    const normalizedText = structured ? JSON.stringify(structured, null, 2) : rawText;
 
 
     return {
-        text: response.text || "",
+        text: normalizedText,
+        structured,
     };
   },
 });
@@ -158,6 +169,7 @@ export const renovationWorkflow = createWorkflow({
   inputSchema: OrchestrationStepInputSchema,
   outputSchema: z.object({
     finalResponse: z.string().describe('The final response from the selected agent'),
+    budgetSpreadsheet: BudgetSpreadsheetSchema.optional().describe('Structured budget data, when provided by the budget agent'),
   })
 })
   .then(orchestrationStep)
@@ -166,8 +178,52 @@ export const renovationWorkflow = createWorkflow({
     [async ({ inputData }) => inputData.suitableAgent === 'design-agent', designAgentStep]
   ])
   .map(async (stepOutput: any) => {
-    // Map the agent's text output to the expected finalResponse structure
-    // Using 'any' type here to handle the step output
-    return { finalResponse: stepOutput.text };
+    const normalized = typeof stepOutput === 'object' && stepOutput !== null ? stepOutput : {};
+    const structured = normalized.structured ?? (typeof normalized.text === 'string' ? tryParseBudgetAgentReply(normalized.text) : undefined);
+    if (structured) {
+      return {
+        finalResponse: JSON.stringify(structured, null, 2),
+        budgetSpreadsheet: structured.spreadsheet ?? undefined,
+      };
+    }
+    return {
+      finalResponse: typeof normalized.text === 'string' ? normalized.text : '',
+    };
   })
   .commit();
+
+
+function tryParseBudgetAgentReply(text: string): BudgetAgentReply | undefined {
+  if (!text) {
+    return undefined;
+  }
+
+  const candidate = extractJsonPayload(text);
+  if (!candidate) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(candidate);
+    return BudgetAgentReplySchema.parse(parsed);
+  } catch (error) {
+    console.warn('Failed to parse budget agent payload', error);
+    return undefined;
+  }
+}
+
+
+function extractJsonPayload(text: string): string | undefined {
+  const fencedMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fencedMatch) {
+    return fencedMatch[1].trim();
+  }
+
+  const firstBrace = text.indexOf('{');
+  const lastBrace = text.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    return text.slice(firstBrace, lastBrace + 1).trim();
+  }
+
+  return undefined;
+}
