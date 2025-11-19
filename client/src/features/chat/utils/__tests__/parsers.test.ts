@@ -99,6 +99,19 @@ describe("tryParseImageGallery", () => {
     const result = tryParseImageGallery(json);
     expect(result?.images).toHaveLength(1);
   });
+
+  it("preserves the gallery variant flag", () => {
+    const json = JSON.stringify({
+      variant: "customer",
+      query: "customer uploads",
+      summary: "Moodboard inputs",
+      images: [
+        { id: "1", title: "Upload A", imageUrl: "https://example.com/a.jpg", sourceUrl: "https://example.com/a" },
+      ],
+    });
+    const result = tryParseImageGallery(json);
+    expect(result?.variant).toBe("customer");
+  });
 });
 
 describe("parseAssistantMessageContent", () => {

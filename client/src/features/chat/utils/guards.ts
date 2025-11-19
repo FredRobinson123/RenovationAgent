@@ -53,9 +53,15 @@ export function isDesignImageGallery(value: unknown): value is DesignImageGaller
     return false;
   }
   const record = value as Record<string, unknown>;
+  const variant = record.variant;
+  const hasValidVariant =
+    variant === undefined ||
+    variant === null ||
+    (typeof variant === "string" && ["search", "customer"].includes(variant));
   return (
     typeof record.query === "string" &&
     (record.summary === undefined || record.summary === null || typeof record.summary === "string") &&
+    hasValidVariant &&
     Array.isArray(record.images) &&
     record.images.every(isDesignImage)
   );

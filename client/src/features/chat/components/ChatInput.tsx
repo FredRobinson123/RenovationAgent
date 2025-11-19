@@ -3,17 +3,27 @@ import { Button } from "@/components/button";
 import { Textarea } from "@/components/textarea";
 import { Send } from "lucide-react";
 import { cn } from "@shared/lib/utils";
+import type { CustomerImageUpload } from "@features/chat/types";
+import { AttachmentBar } from "@features/chat/components/AttachmentBar";
 
 interface ChatInputProps {
   onSendMessage: (content: string) => Promise<void> | void;
   disabled?: boolean;
   placeholder?: string;
+  attachments: CustomerImageUpload[];
+  onUploadAttachments: (files: FileList | File[]) => Promise<void> | void;
+  onRemoveAttachment: (uploadId: string) => Promise<void> | void;
+  isUploadingAttachments?: boolean;
 }
 
 export function ChatInput({
   onSendMessage,
   disabled = false,
   placeholder = "Tell me about your renovation project",
+  attachments,
+  onUploadAttachments,
+  onRemoveAttachment,
+  isUploadingAttachments = false,
 }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -21,7 +31,7 @@ export function ChatInput({
 
   const handleSend = async () => {
     const trimmed = message.trim();
-    if (!trimmed || disabled || sending) {
+    if (!trimmed || disabled || sending || isUploadingAttachments) {
       return;
     }
 
@@ -71,13 +81,20 @@ export function ChatInput({
             size="icon"
             className="shrink-0 h-9 w-9 rounded-full"
             onClick={handleSend}
-            disabled={disabled || sending || !message.trim()}
+            disabled={disabled || sending || isUploadingAttachments || !message.trim()}
             data-testid="button-send-message"
             aria-label="Send message"
           >
             <Send className="h-4 w-4" />
           </Button>
         </div>
+        <AttachmentBar
+          attachments={attachments}
+          onUpload={onUploadAttachments}
+          onRemove={onRemoveAttachment}
+          isUploading={isUploadingAttachments}
+          disabled={disabled || sending}
+        />
       </div>
     </div>
   );

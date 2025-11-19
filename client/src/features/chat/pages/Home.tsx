@@ -4,7 +4,16 @@ import { MessageList } from "@features/chat/components/MessageList";
 import { useChatSession } from "@features/chat/hooks/useChatSession";
 
 export default function HomePage() {
-  const { messages, isSending, sendMessage, messagesEndRef } = useChatSession();
+  const {
+    messages,
+    isSending,
+    sendMessage,
+    messagesEndRef,
+    attachments,
+    isUploadingAttachments,
+    uploadAttachments,
+    removeAttachment,
+  } = useChatSession();
 
   return (
     <div className="min-h-screen bg-background">
@@ -12,7 +21,14 @@ export default function HomePage() {
         <ChatHeader />
         <MessageList messages={messages} isSending={isSending} messagesEndRef={messagesEndRef} />
       </div>
-      <ChatComposer onSendMessage={sendMessage} disabled={isSending} />
+      <ChatComposer
+        onSendMessage={sendMessage}
+        disabled={isSending}
+        attachments={attachments}
+        isUploading={isUploadingAttachments}
+        onUploadAttachments={uploadAttachments}
+        onRemoveAttachment={removeAttachment}
+      />
     </div>
   );
 }

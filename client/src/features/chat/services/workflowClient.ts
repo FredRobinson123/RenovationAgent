@@ -1,7 +1,7 @@
 import { extractErrorMessage, parseAssistantMessageContent } from "@features/chat/utils/parsers";
-import type { ChatMessage } from "@features/chat/types";
+import type { AgentSource, ChatMessage } from "@features/chat/types";
 import type { BudgetSpreadsheet, DesignImageGallery } from "@features/chat/types";
-import { isBudgetSpreadsheet } from "@features/chat/utils/guards";
+import { isBudgetSpreadsheet, isDesignImageGallery } from "@features/chat/utils/guards";
 
 const WORKFLOW_ID = "renovation-workflow";
 const LOCALHOST_SERVER_URL = "http://localhost:5001";
@@ -34,7 +34,9 @@ const normalizeBaseUrl = (rawUrl: unknown): string => {
   return `https://${trimmed}`;
 };
 
-const API_BASE_URL = normalizeBaseUrl(import.meta.env.VITE_SERVER_URL ?? RUNTIME_ORIGIN ?? LOCALHOST_SERVER_URL);
+export const API_BASE_URL = normalizeBaseUrl(
+  import.meta.env.VITE_SERVER_URL ?? RUNTIME_ORIGIN ?? LOCALHOST_SERVER_URL
+);
 const WORKFLOW_ENDPOINT = `${API_BASE_URL}/api/workflows/${WORKFLOW_ID}/run`;
 const WORKFLOW_REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_WORKFLOW_TIMEOUT_MS ?? 60_000);
 
@@ -45,16 +47,24 @@ export type WorkflowUserContext = {
   email?: string;
 };
 
+export type WorkflowRunOptions = {
+  token?: string;
+  userContext?: WorkflowUserContext;
+  sessionId?: string;
+  uploadedImageIds?: string[];
+};
+
 export type WorkflowRunResult = {
   finalResponse: string;
   budgetSpreadsheet?: BudgetSpreadsheet;
   imageGallery?: DesignImageGallery;
+  selectedAgent?: AgentSource;
 };
 
 export async function runRenovationWorkflow(
   latestCustomerMessage: string,
   conversationHistory: string,
-  options: { token?: string; userContext?: WorkflowUserContext } = {}
+  options: WorkflowRunOptions = {}
 ): Promise<WorkflowRunResult> {
   const headers: HeadersInit = { "Content-Type": "application/json" };
   if (options.token) {
@@ -68,6 +78,11 @@ export async function runRenovationWorkflow(
   if (options.userContext?.email) {
     userMetadata.userEmail = options.userContext.email;
   }
+
+  const sessionId = options.sessionId ?? createFallbackSessionId();
+  const uploadIds = Array.isArray(options.uploadedImageIds)
+    ? options.uploadedImageIds.filter((id): id is string => typeof id === "string" && id.trim().length > 0)
+    : [];
 
   let response: Response;
   const supportsAbort = typeof AbortController !== "undefined";
@@ -88,6 +103,8 @@ export async function runRenovationWorkflow(
         inputData: {
           latestCustomerMessage,
           conversationHistory,
+          sessionId,
+          uploadedImageIds: uploadIds,
           ...userMetadata,
         },
       }),
@@ -153,10 +170,17 @@ export async function runRenovationWorkflow(
     pickBudgetSpreadsheet(resultRecord) ??
     pickBudgetSpreadsheet(outputRecord);
 
+  const serverImageGallery =
+    pickImageGallery(record) ?? pickImageGallery(resultRecord) ?? pickImageGallery(outputRecord);
+
+  const selectedAgent =
+    pickSelectedAgent(record) ?? pickSelectedAgent(resultRecord) ?? pickSelectedAgent(outputRecord);
+
   return {
     finalResponse: parsedAssistantMessage.content,
     budgetSpreadsheet: serverSpreadsheet ?? parsedAssistantMessage.budgetSpreadsheet,
-    imageGallery: parsedAssistantMessage.imageGallery,
+    imageGallery: serverImageGallery ?? parsedAssistantMessage.imageGallery,
+    selectedAgent,
   };
 }
 
@@ -210,5 +234,40 @@ function pickBudgetSpreadsheet(container: Record<string, unknown> | undefined): 
   }
 
   return undefined;
+}
+
+function pickImageGallery(container: Record<string, unknown> | undefined): DesignImageGallery | undefined {
+  if (!container) {
+    return undefined;
+  }
+
+  const candidate = container.imageGallery ?? container.gallery;
+  if (isDesignImageGallery(candidate)) {
+    return candidate;
+  }
+
+  return undefined;
+}
+
+function pickSelectedAgent(container: Record<string, unknown> | undefined): AgentSource | undefined {
+  if (!container) {
+    return undefined;
+  }
+  const candidate = container.selectedAgent;
+  return isAgentSource(candidate) ? candidate : undefined;
+}
+
+function isAgentSource(value: unknown): value is AgentSource {
+  if (typeof value !== "string") {
+    return false;
+  }
+  return ["assistant", "orchestrator", "design-agent", "budget-agent", "moodboard-agent"].includes(value);
+}
+
+function createFallbackSessionId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 

@@ -35,6 +35,19 @@ A renovation assistant agent built with Mastra that helps users with design and 
    - Sign in with a Clerk user (create one in the dashboard if needed)
    - Send a chat message; the frontend forwards the Clerk session token to the backend, which verifies it before running the workflow.
 
+## Image uploads & cleanup
+
+- The chat now supports customer inspiration uploads. Configure Supabase once:
+  - Create a bucket (defaults to `chat-image-uploads`).
+  - Set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_BUCKET` in `server/.env`.
+  - Tune upload limits with `UPLOAD_MAX_FILE_SIZE_MB`, `UPLOAD_MAX_FILE_COUNT`, and `UPLOAD_SIGNED_URL_TTL_SECONDS`.
+- Uploaded files are ephemeral. A cron job runs daily at **18:00 Europe/London** (`UPLOAD_CLEANUP_CRON`) and deletes any uploads older than `UPLOAD_RETENTION_HOURS` (24 by default) from both Supabase storage and the metadata table.
+- Need to reclaim space immediately? Run the cleaner manually:
+  ```bash
+  pnpm --filter server cleanup-uploads
+  ```
+  This uses the same retention window and prints how many uploads were removed.
+
 ## Deploying to Vercel
 
 1. Deploy the backend (`server/`) first and note the public URL (e.g., `https://renovation-agent-server.vercel.app`).

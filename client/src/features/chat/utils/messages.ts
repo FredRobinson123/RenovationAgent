@@ -11,7 +11,14 @@ export function buildConversationHistory(messages: ChatMessage[]): string {
   return messages
     .map((message) => {
       const speaker = message.role === "user" ? "Customer" : "Ren";
-      return `${speaker}: ${message.content}`;
+      const lines = [`${speaker}: ${message.content}`];
+      if (message.attachments && message.attachments.length > 0) {
+        const count = message.attachments.length;
+        lines.push(
+          `${speaker} uploaded ${count} inspiration image${count > 1 ? "s" : ""}.`
+        );
+      }
+      return lines.join("\n");
     })
     .join("\n\n");
 }

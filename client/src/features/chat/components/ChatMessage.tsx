@@ -32,6 +32,24 @@ export function ChatMessage({ message }: ChatMessageProps) {
           padding: designSystem.spacing.bubblePadding,
         }}
       >
+        {isUser && message.attachments && message.attachments.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {message.attachments.map((attachment) => (
+              <div
+                key={attachment.id}
+                className="h-20 w-20 overflow-hidden rounded-lg border border-border/60 bg-muted/40"
+              >
+                <img
+                  src={attachment.signedUrl}
+                  alt={attachment.fileName}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
         <div
           className="text-base leading-relaxed whitespace-pre-wrap"
           data-testid="text-message-content"

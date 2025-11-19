@@ -13,6 +13,7 @@ import { resolveWorkflowInstance, listWorkflowIds } from './services/workflow-re
 import { logger } from './utils/pino-logger.js';
 import { sendJson } from './http/http-utils.js';
 import { agents } from './mastra/agents/index.js';
+import { scheduleUploadCleanup } from './services/upload-cleanup.js';
 
 const authService = createAuthService({
   logger,
@@ -35,6 +36,7 @@ const requestHandler = createRequestHandler({
 });
 
 logger.info('Server environment configuration', serverEnvironmentSummary);
+scheduleUploadCleanup();
 
 async function startServer() {
   try {

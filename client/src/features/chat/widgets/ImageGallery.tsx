@@ -9,6 +9,7 @@ interface ImageGalleryProps {
 
 export function ImageGallery({ gallery, className }: ImageGalleryProps) {
   const images = (gallery.images ?? []).filter((image) => Boolean(image.imageUrl));
+  const isCustomerGallery = gallery.variant === "customer";
 
   if (images.length === 0) return null;
 
@@ -22,12 +23,21 @@ export function ImageGallery({ gallery, className }: ImageGalleryProps) {
       data-testid="image-gallery"
     >
       <div>
-        <p className="text-sm font-semibold text-bubble-agent-foreground">Design inspiration</p>
-        <p className="text-xs text-bubble-agent-foreground/70">
-          Search: <span className="font-medium">{gallery.query}</span>
+        <p className="text-sm font-semibold text-bubble-agent-foreground">
+          {isCustomerGallery ? "Your inspiration uploads" : "Design inspiration"}
         </p>
+        {!isCustomerGallery && (
+          <p className="text-xs text-bubble-agent-foreground/70">
+            Search: <span className="font-medium">{gallery.query}</span>
+          </p>
+        )}
         {gallery.summary && (
           <p className="text-sm text-bubble-agent-foreground/80 mt-1">{gallery.summary}</p>
+        )}
+        {isCustomerGallery && !gallery.summary && (
+          <p className="text-sm text-bubble-agent-foreground/80 mt-1">
+            These are the images you shared to ground this moodboard.
+          </p>
         )}
       </div>
 

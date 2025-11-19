@@ -4,6 +4,7 @@ import { agents } from '../mastra/agents/index.js';
 import { listWorkflowIds, listWorkflowKeys } from '../services/workflow-registry.js';
 import type { LoggerLike } from '../types.js';
 import type { AuthenticatedUser } from '../services/auth-service.js';
+import { handleImageUploadRequest, handleUploadDeleteRequest } from './upload-handler.js';
 
 export type RouterDeps = {
   logger: LoggerLike;
@@ -75,6 +76,25 @@ export function createRequestHandler({ logger, defaultPort, authenticateRequest,
         }
 
         await handleWorkflowRunRequest(workflowId, req, res, authUser);
+        return;
+      }
+
+      if (req.method === 'POST' && url.pathname === '/api/uploads/images') {
+        const authUser = await authenticateRequest(req, res);
+        if (!authUser) {
+          return;
+        }
+        await handleImageUploadRequest(req, res, authUser, { logger });
+        return;
+      }
+
+      if (req.method === 'DELETE' && url.pathname.startsWith('/api/uploads/')) {
+        const [, , , uploadId] = url.pathname.split('/');
+        const authUser = await authenticateRequest(req, res);
+        if (!authUser) {
+          return;
+        }
+        await handleUploadDeleteRequest(uploadId, res, authUser, { logger });
         return;
       }
 

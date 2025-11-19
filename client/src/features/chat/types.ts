@@ -1,6 +1,16 @@
 export type ChatRole = 'user' | 'assistant';
 
-export type AgentSource = 'orchestrator' | 'design-agent' | 'budget-agent' | 'assistant';
+export type AgentSource = 'orchestrator' | 'design-agent' | 'budget-agent' | 'moodboard-agent' | 'assistant';
+
+export interface CustomerImageUpload {
+  id: string;
+  sessionId: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+  signedUrl: string;
+}
 
 export interface ChatMessage {
   id: string;
@@ -10,6 +20,7 @@ export interface ChatMessage {
   source?: AgentSource;
   budgetSpreadsheet?: BudgetSpreadsheet;
   imageGallery?: DesignImageGallery;
+  attachments?: CustomerImageUpload[];
 }
 
 export interface BudgetLineItem {
@@ -40,5 +51,6 @@ export interface DesignImageGallery {
   query: string;
   summary?: string | null;
   images: DesignImage[];
+  variant?: "search" | "customer";
 }
 
