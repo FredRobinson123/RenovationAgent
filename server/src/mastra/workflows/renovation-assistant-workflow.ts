@@ -3,7 +3,7 @@ import { generateText } from 'ai';
 import { geminiFasttModel } from '../llms/index.js';
 import { BudgetAgentReplySchema, BudgetSpreadsheetSchema, type BudgetAgentReply } from '../tools/create-budget-spreadsheet-tool.js';
 import { z } from 'zod';
-import { renovationOrchestrationPrompt } from './prompts.js';
+import { blockedRequestReply, renovationOrchestrationPrompt } from './prompts.js';
 import { designAgent } from '../agents/design-agent.js';
 import { budgetAgent } from '../agents/budget-agent.js';
 import { moodboardAgent } from '../agents/moodboard-agent.js';
@@ -147,15 +147,29 @@ const budgetAgentStep = createStep({
 
     // Generate response using the budgetAgent
     const response = await budgetAgent.generate(message);
+
+    if ((response as any).tripwire) {
+      // Guardrail processors blocked this request – return a safe, templated reply.
+      // We log to stderr to avoid leaking user content but keep an audit trail.
+      console.warn('Budget agent request blocked by input processors', {
+        tripwireReason: (response as any).tripwireReason,
+      });
+
+      return {
+        text: blockedRequestReply,
+        structured: undefined,
+        selectedAgent: 'budget-agent' as const,
+      };
+    }
+
     const rawText = response.text || '';
     const structured = tryParseBudgetAgentReply(rawText);
     const normalizedText = structured ? JSON.stringify(structured, null, 2) : rawText;
 
-
     return {
-        text: normalizedText,
-        structured,
-        selectedAgent: 'budget-agent' as const,
+      text: normalizedText,
+      structured,
+      selectedAgent: 'budget-agent' as const,
     };
   },
 });
@@ -186,10 +200,20 @@ const designAgentStep = createStep({
     // Generate response using the designAgent (using string format instead of message object)
     const response = await designAgent.generate(message);
 
+    if ((response as any).tripwire) {
+      console.warn('Design agent request blocked by input processors', {
+        tripwireReason: (response as any).tripwireReason,
+      });
+
+      return {
+        text: blockedRequestReply,
+        selectedAgent: 'design-agent' as const,
+      };
+    }
 
     return {
-        text: response.text || "",
-        selectedAgent: 'design-agent' as const,
+      text: response.text || '',
+      selectedAgent: 'design-agent' as const,
     };
   },
 });
@@ -240,6 +264,17 @@ const moodboardAgentStep = createStep({
     ].join('\n');
 
     const response = await moodboardAgent.generate(agentPrompt);
+
+    if ((response as any).tripwire) {
+      console.warn('Moodboard agent request blocked by input processors', {
+        tripwireReason: (response as any).tripwireReason,
+      });
+
+      return {
+        text: blockedRequestReply,
+        selectedAgent: 'moodboard-agent' as const,
+      };
+    }
 
     return {
       text: response.text || "I'll start layering these uploads into your first-pass moodboard now.",

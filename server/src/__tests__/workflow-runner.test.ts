@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createWorkflowRunner } from '../services/workflow-runner.js';
 import type { WorkflowInstance } from '../services/workflow-registry.js';
 import type { JsonRecord, LoggerLike } from '../types.js';
+import { blockedRequestReply } from '../mastra/workflows/prompts.js';
 
 const createLoggerStub = (): LoggerLike => {
   const log = (_message: string, _metadata?: Record<string, unknown>) => undefined;
@@ -180,4 +181,32 @@ test('handleWorkflowRunRequest responds 504 when workflow times out', async () =
   assert.strictEqual(record.statusCode, 504);
   const errorMessage = typeof record.body?.error === 'string' ? record.body.error : '';
   assert.match(errorMessage, /timed out/);
+});
+
+test('handleWorkflowRunRequest surfaces blocked guardrail reply from workflow result', async () => {
+  const logger = createLoggerStub();
+  const workflow: WorkflowInstance = {
+    start: async () => ({
+      status: 'success',
+      result: {
+        finalResponse: blockedRequestReply,
+      },
+    }),
+  };
+  const runner = createWorkflowRunner({
+    logger,
+    workflowTimeoutMs: 50,
+    resolveWorkflowInstance: async () => workflow,
+  });
+
+  const { res, record } = createMockResponse();
+  await runner.handleWorkflowRunRequest(
+    'workflow-guardrail-blocked',
+    createJsonRequest({ inputData: { foo: 'bar' } }),
+    res,
+    { userId: 'user_guard' }
+  );
+
+  assert.strictEqual(record.statusCode, 200);
+  assert.strictEqual(record.body?.finalResponse, blockedRequestReply);
 });

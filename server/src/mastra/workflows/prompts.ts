@@ -207,3 +207,7 @@ uploaded_image_count: 3
 - Values must be from the allowed enums only
 - Be consistent across turns; apply tie-breakers when mixed intents appear
 </constraints>`;
+
+// Shared response when customer input is blocked by guardrail processors
+export const blockedRequestReply =
+  "I’m not able to help with that request. I can only assist with renovation-related questions such as layouts, materials, and budgets.";
