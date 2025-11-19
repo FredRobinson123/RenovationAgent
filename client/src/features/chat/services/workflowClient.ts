@@ -1,9 +1,4 @@
-import {
-  extractErrorMessage,
-  tryParseBudgetAgentPayload,
-  tryParseBudgetSpreadsheet,
-  tryParseImageGallery,
-} from "@features/chat/utils/parsers";
+import { extractErrorMessage, parseAssistantMessageContent } from "@features/chat/utils/parsers";
 import type { ChatMessage } from "@features/chat/types";
 import type { BudgetSpreadsheet, DesignImageGallery } from "@features/chat/types";
 import { isBudgetSpreadsheet } from "@features/chat/utils/guards";
@@ -151,8 +146,7 @@ export async function runRenovationWorkflow(
   }
 
   const rawFinalResponse = finalResponse;
-  const payload = tryParseBudgetAgentPayload(rawFinalResponse);
-  const normalizedFinalResponse = payload?.messageForCustomer ?? rawFinalResponse;
+  const parsedAssistantMessage = parseAssistantMessageContent(rawFinalResponse);
 
   const serverSpreadsheet =
     pickBudgetSpreadsheet(record) ??
@@ -160,9 +154,9 @@ export async function runRenovationWorkflow(
     pickBudgetSpreadsheet(outputRecord);
 
   return {
-    finalResponse: normalizedFinalResponse,
-    budgetSpreadsheet: serverSpreadsheet ?? payload?.spreadsheet ?? tryParseBudgetSpreadsheet(rawFinalResponse),
-    imageGallery: tryParseImageGallery(rawFinalResponse),
+    finalResponse: parsedAssistantMessage.content,
+    budgetSpreadsheet: serverSpreadsheet ?? parsedAssistantMessage.budgetSpreadsheet,
+    imageGallery: parsedAssistantMessage.imageGallery,
   };
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   extractJsonPayload,
+  parseAssistantMessageContent,
   tryParseBudgetAgentPayload,
   tryParseBudgetSpreadsheet,
   tryParseImageGallery,
@@ -97,6 +98,36 @@ describe("tryParseImageGallery", () => {
     });
     const result = tryParseImageGallery(json);
     expect(result?.images).toHaveLength(1);
+  });
+});
+
+describe("parseAssistantMessageContent", () => {
+  it("removes image gallery json from the assistant text", () => {
+    const message = [
+      "Here are a few ideas that blend Victorian charm with modern silhouettes.",
+      "```json",
+      JSON.stringify({
+        imageGallery: {
+          query: "modern victorian sofas",
+          images: [
+            { id: "1", title: "Modern", imageUrl: "https://example.com/1.jpg", sourceUrl: "https://example.com" },
+          ],
+        },
+      }),
+      "```",
+    ].join("\n");
+
+    const parsed = parseAssistantMessageContent(message);
+    expect(parsed.content).toBe("Here are a few ideas that blend Victorian charm with modern silhouettes.");
+    expect(parsed.imageGallery?.images).toHaveLength(1);
+  });
+
+  it("returns plain text when there is no structured data", () => {
+    const message = "I can price that project at roughly $45k depending on finishes.";
+    const parsed = parseAssistantMessageContent(message);
+    expect(parsed.content).toBe(message);
+    expect(parsed.budgetSpreadsheet).toBeUndefined();
+    expect(parsed.imageGallery).toBeUndefined();
   });
 });
 

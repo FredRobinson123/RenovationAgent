@@ -1,6 +1,4 @@
 import { cn } from "@shared/lib/utils";
-import { Badge } from "@/components/badge";
-import { Palette, PoundSterling, Sparkles } from "lucide-react";
 import type { ChatMessage as ChatMessageType } from "@/features/chat/types";
 import { SpreadsheetViewer } from "@/features/chat/widgets/SpreadsheetViewer";
 import { ImageGallery } from "@/features/chat/widgets/ImageGallery";
@@ -11,33 +9,8 @@ interface ChatMessageProps {
   message: ChatMessageType;
 }
 
-const agentConfig = {
-  orchestrator: {
-    label: "Conversation Guide",
-    icon: Sparkles,
-    color: "bg-widget text-widget-foreground",
-  },
-  "design-agent": {
-    label: "Design Expert",
-    icon: Palette,
-    color: "bg-clay text-charcoal-taupe",
-  },
-  "budget-agent": {
-    label: "Budget Planner",
-    icon: PoundSterling,
-    color: "bg-bubble-user text-bubble-user-foreground",
-  },
-  assistant: {
-    label: "Ren",
-    icon: Sparkles,
-    color: "bg-bubble-agent text-bubble-agent-foreground",
-  },
-} as const;
-
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === "user";
-  const agentInfo = agentConfig[message.source ?? "assistant"];
-  const AgentIcon = agentInfo.icon;
 
   return (
     <div
@@ -59,18 +32,6 @@ export function ChatMessage({ message }: ChatMessageProps) {
           padding: designSystem.spacing.bubblePadding,
         }}
       >
-        {!isUser && (
-          <div className="flex items-center gap-2 mb-2">
-            <Badge
-              className={cn("text-xs font-playful gap-1", agentInfo.color)}
-              data-testid={`badge-agent-${message.source ?? "assistant"}`}
-            >
-              <AgentIcon className="h-3 w-3" />
-              {agentInfo.label}
-            </Badge>
-          </div>
-        )}
-
         <div
           className="text-base leading-relaxed whitespace-pre-wrap"
           data-testid="text-message-content"

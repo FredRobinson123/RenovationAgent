@@ -6,19 +6,21 @@ export type BudgetAgentPayload = {
   spreadsheet?: BudgetSpreadsheet;
 };
 
+type JsonPayloadMatch = {
+  json: string;
+  start: number;
+  end: number;
+  kind: "fenced" | "braces";
+};
+
+export type ParsedAssistantMessageContent = {
+  content: string;
+  budgetSpreadsheet?: BudgetSpreadsheet;
+  imageGallery?: DesignImageGallery;
+};
+
 export function extractJsonPayload(text: string): string | undefined {
-  const fencedMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fencedMatch) {
-    return fencedMatch[1].trim();
-  }
-
-  const firstBrace = text.indexOf("{");
-  const lastBrace = text.lastIndexOf("}");
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    return text.slice(firstBrace, lastBrace + 1).trim();
-  }
-
-  return undefined;
+  return extractJsonPayloadMatch(text)?.json;
 }
 
 export function extractErrorMessage(body: string | undefined): string | undefined {
@@ -100,7 +102,7 @@ export function tryParseBudgetAgentPayload(text: string): BudgetAgentPayload | u
   if (!candidate) {
     return undefined;
   }
-
+ 
   try {
     const parsed = JSON.parse(candidate);
     if (!parsed || typeof parsed !== "object") {
@@ -124,5 +126,82 @@ export function tryParseBudgetAgentPayload(text: string): BudgetAgentPayload | u
     console.warn("Failed to parse budget agent payload JSON", error);
     return undefined;
   }
+}
+
+export function parseAssistantMessageContent(text: string): ParsedAssistantMessageContent {
+  const normalizedInput = typeof text === "string" ? text : "";
+  if (!normalizedInput.trim()) {
+    return { content: "" };
+  }
+
+  const jsonMatch = extractJsonPayloadMatch(normalizedInput);
+  const budgetPayload = tryParseBudgetAgentPayload(normalizedInput);
+  const budgetSpreadsheet =
+    budgetPayload?.spreadsheet ?? tryParseBudgetSpreadsheet(normalizedInput);
+  const imageGallery = tryParseImageGallery(normalizedInput);
+  const hasStructuredContent = Boolean(budgetPayload || budgetSpreadsheet || imageGallery);
+
+  let content = budgetPayload?.messageForCustomer ?? normalizedInput;
+
+  if (!budgetPayload && hasStructuredContent && jsonMatch) {
+    content = stripJsonPayloadFromText(normalizedInput, jsonMatch);
+  }
+
+  return {
+    content: content.trim(),
+    budgetSpreadsheet,
+    imageGallery,
+  };
+}
+
+function extractJsonPayloadMatch(text: string): JsonPayloadMatch | undefined {
+  if (!text) {
+    return undefined;
+  }
+
+  const fencedRegex = /```(?:json)?\s*([\s\S]*?)```/i;
+  const fencedMatch = fencedRegex.exec(text);
+  if (fencedMatch && typeof fencedMatch.index === "number") {
+    const fullMatch = fencedMatch[0] ?? "";
+    const payload = (fencedMatch[1] ?? "").trim();
+    return {
+      json: payload,
+      start: fencedMatch.index,
+      end: fencedMatch.index + fullMatch.length,
+      kind: "fenced",
+    };
+  }
+
+  const firstBrace = text.indexOf("{");
+  const lastBrace = text.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    return {
+      json: text.slice(firstBrace, lastBrace + 1).trim(),
+      start: firstBrace,
+      end: lastBrace + 1,
+      kind: "braces",
+    };
+  }
+
+  return undefined;
+}
+
+function stripJsonPayloadFromText(text: string, match: JsonPayloadMatch): string {
+  if (!text) {
+    return "";
+  }
+
+  if (match.kind === "fenced") {
+    const withoutFences = text.replace(/```(?:json)?[\s\S]*?```/gi, "");
+    return normalizeMessageWhitespace(withoutFences);
+  }
+
+  const before = text.slice(0, match.start);
+  const after = text.slice(match.end);
+  return normalizeMessageWhitespace(`${before}${after}`);
+}
+
+function normalizeMessageWhitespace(text: string): string {
+  return text.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 

@@ -13,7 +13,7 @@ interface ChatInputProps {
 export function ChatInput({
   onSendMessage,
   disabled = false,
-  placeholder = "Tell me about your renovation project...",
+  placeholder = "Tell me about your renovation project",
 }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -60,7 +60,7 @@ export function ChatInput({
             placeholder={placeholder}
             disabled={disabled}
             className={cn(
-              "resize-none border-0 text-base focus-visible:ring-0 bg-transparent min-h-[40px] max-h-[200px]",
+              "resize-none border-0 text-base focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent min-h-[40px] max-h-[200px]",
               "placeholder:text-muted-foreground flex-1"
             )}
             rows={1}

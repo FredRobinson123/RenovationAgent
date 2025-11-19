@@ -22,12 +22,12 @@ export function ImageGallery({ gallery, className }: ImageGalleryProps) {
       data-testid="image-gallery"
     >
       <div>
-        <p className="text-sm font-semibold text-widget-foreground">Design inspiration</p>
-        <p className="text-xs text-widget-foreground/70">
+        <p className="text-sm font-semibold text-bubble-agent-foreground">Design inspiration</p>
+        <p className="text-xs text-bubble-agent-foreground/70">
           Search: <span className="font-medium">{gallery.query}</span>
         </p>
         {gallery.summary && (
-          <p className="text-sm text-widget-foreground/80 mt-1">{gallery.summary}</p>
+          <p className="text-sm text-bubble-agent-foreground/80 mt-1">{gallery.summary}</p>
         )}
       </div>
 
