@@ -1,12 +1,16 @@
 import { Route, Switch } from "wouter";
-import HomePage from "@features/chat/pages/Home";
+import HomeLanding from "@features/home/pages/HomeLanding";
+import WrenPage from "@features/chat/pages/Wren";
 import NotFound from "@/pages/not-found";
 
 export function AppRoutes() {
   return (
     <Switch>
       <Route path="/">
-        <HomePage />
+        <HomeLanding />
+      </Route>
+      <Route path="/wren">
+        <WrenPage />
       </Route>
       <Route component={NotFound} />
     </Switch>
