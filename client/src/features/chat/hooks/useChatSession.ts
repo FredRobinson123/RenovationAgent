@@ -195,6 +195,8 @@ export function useChatSession(): UseChatSessionResult {
       let attachmentSnapshot: CustomerImageUpload[] = [];
       try {
         attachmentSnapshot = await uploadPendingAttachments();
+        // Clear composer attachments immediately so they disappear from the input
+        setUploadedAttachments([]);
       } catch {
         return;
       }
@@ -251,7 +253,6 @@ export function useChatSession(): UseChatSessionResult {
           imageGallery,
         };
         setMessages((prev) => [...prev, assistantMessage]);
-        setUploadedAttachments([]);
       } catch (error) {
         console.error(error);
         const friendlyMessage = buildFriendlyErrorMessage(error);

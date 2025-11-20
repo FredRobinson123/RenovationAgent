@@ -20,13 +20,6 @@ export function GalleryGrid() {
 
   return (
     <section className="w-full" data-testid="home-gallery">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-2 text-center">
-        <p className="text-sm uppercase tracking-[0.4em] text-muted-foreground">Project moments</p>
-        <p className="text-xl text-muted-foreground/80">
-          A peek at the messy middle and the rooms that made it worthwhile.
-        </p>
-      </div>
-
       <div className="mt-8 space-y-[4px]">
         {heroImage && (
           <div>

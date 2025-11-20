@@ -5,16 +5,16 @@ export type GalleryImage = {
 
 export const featuredGallery: GalleryImage[] = [
   {
-    id: "renovation_1",
-    src: "/home-gallery/renovation_1.jpeg",
+    id: "renovation_3",
+    src: "/home-gallery/renovation_3.jpeg",
   },
   {
     id: "renovation_2",
     src: "/home-gallery/renovation_2.jpeg",
   },
   {
-    id: "renovation_3",
-    src: "/home-gallery/renovation_3.jpeg",
+    id: "renovation_1",
+    src: "/home-gallery/renovation_1.jpeg",
   },
 ];
 
