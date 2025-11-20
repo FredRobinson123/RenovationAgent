@@ -100,15 +100,12 @@ describe("tryParseContractorSpreadsheet", () => {
       messageForCustomer: "Here are some potential contractors to help with your tiling.",
       spreadsheet: {
         projectName: "Austin Guest Bath",
-        location: "East Austin",
         createdAt: new Date().toISOString(),
         contractors: [
           {
             name: "Tile Pros ATX",
-            serviceType: "Tiling",
-            areaServed: "East Austin",
-            website: "https://example.com/tilers",
-            contact: "512-555-0101",
+            specialty: "Tiling",
+            url: "https://example.com/tilers",
           },
         ],
       },
@@ -124,15 +121,13 @@ describe("tryParseMaterialsSpreadsheet", () => {
     const json = JSON.stringify({
       spreadsheet: {
         projectName: "Kitchen Countertops",
-        location: "Bay Area",
         createdAt: new Date().toISOString(),
         materials: [
           {
             material: "Quartz slabs",
-            vendor: "Stone Collective",
-            location: "SF",
-            website: "https://example.com/quartz",
-            indicativePrice: "$95/sq ft",
+            supplier: "Stone Collective",
+            price: "$95/sq ft",
+            url: "https://example.com/quartz",
           },
         ],
       },
@@ -168,20 +163,18 @@ describe("tryParseContractorAgentPayload", () => {
       messageForCustomer: "Here are some potential contractors to help with the built-ins.",
       spreadsheet: {
         projectName: "Built-in shelving",
-        location: "Brooklyn",
         createdAt: new Date().toISOString(),
         contractors: [
           {
             name: "BK Millworks",
-            serviceType: "Carpentry",
-            areaServed: "Brooklyn",
+            specialty: "Carpentry",
           },
         ],
       },
     });
     const result = tryParseContractorAgentPayload(json);
     expect(result?.messageForCustomer).toMatch(/built-ins/);
-    expect(result?.spreadsheet?.location).toBe("Brooklyn");
+    expect(result?.spreadsheet?.contractors[0]?.name).toBe("BK Millworks");
   });
 });
 
@@ -191,13 +184,11 @@ describe("tryParseMaterialsAgentPayload", () => {
       messageForCustomer: "Here are some potential suppliers to help with the terrazzo look.",
       spreadsheet: {
         projectName: "Terrazzo sourcing",
-        location: "LA",
         createdAt: new Date().toISOString(),
         materials: [
           {
             material: "Terrazzo-look porcelain",
-            vendor: "Surface Lab",
-            location: "Los Angeles",
+            supplier: "Surface Lab",
           },
         ],
       },
@@ -316,20 +307,18 @@ describe("parseAssistantMessageContent", () => {
       messageForCustomer: "Here are some potential contractors to help with your kitchen flooring.",
       spreadsheet: {
         projectName: "Kitchen Flooring",
-        location: "Denver",
         createdAt: new Date().toISOString(),
         contractors: [
           {
             name: "Denver Flooring Co",
-            serviceType: "Flooring",
-            areaServed: "Denver",
+            specialty: "Flooring",
           },
         ],
       },
     });
     const parsed = parseAssistantMessageContent(payload);
     expect(parsed.content).toMatch(/potential contractors/);
-    expect(parsed.contractorSpreadsheet?.location).toBe("Denver");
+    expect(parsed.contractorSpreadsheet?.contractors[0]?.specialty).toBe("Flooring");
   });
 
   it("extracts gantt chart data from timeline agent messages", () => {

@@ -1,16 +1,17 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { CalendarClock, Download } from "lucide-react";
 import { Button } from "@/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/card";
 import type { GanttChart } from "@features/chat/types";
 import { designSystem } from "@/theme/designSystem";
+import { useCsvDownload } from "@shared/hooks/useCsvDownload";
 
 interface GanttChartViewerProps {
   chart: GanttChart;
 }
 
 export function GanttChartViewer({ chart }: GanttChartViewerProps) {
-  const [downloading, setDownloading] = useState(false);
+  const { isDownloading, download } = useCsvDownload({ defaultFilename: "project-timeline" });
   const tasks = useMemo(
     () => [...chart.tasks].sort((a, b) => a.startWeek - b.startWeek),
     [chart.tasks]
@@ -22,54 +23,25 @@ export function GanttChartViewer({ chart }: GanttChartViewerProps) {
   }, [tasks, chart.startingWeek]);
 
   const handleDownloadCsv = () => {
-    try {
-      setDownloading(true);
-
-      const rows: (string | number)[][] = [];
-      rows.push(["Project", chart.projectName]);
-      rows.push(["Starting Week", chart.startingWeek]);
-      rows.push(["Generated At", new Date(chart.createdAt).toLocaleString()]);
-      rows.push([]);
-      rows.push([
+    const rows: (string | number)[][] = [
+      ["Project", chart.projectName],
+      ["Generated At", new Date(chart.createdAt).toLocaleString()],
+      [],
+      [
         "Task",
-        "Phase",
         "Start Week",
         "End Week",
         "Duration (weeks)",
-        "Status",
-        "Dependencies",
-        "Notes",
-      ]);
+      ],
+      ...tasks.map<(string | number)[]>((task) => [
+        task.name,
+        task.startWeek,
+        task.endWeek,
+        task.durationWeeks,
+      ]),
+    ];
 
-      for (const task of tasks) {
-        rows.push([
-          task.name,
-          task.phase ?? "",
-          task.startWeek,
-          task.endWeek,
-          task.durationWeeks,
-          task.status ?? "",
-          Array.isArray(task.dependencies) ? task.dependencies.join(" → ") : "",
-          task.notes ?? "",
-        ]);
-      }
-
-      const csvContent = rows
-        .map((row) => row.map((field) => `"${String(field).replace(/"/g, '""')}"`).join(","))
-        .join("\n");
-
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `${chart.projectName || "project-timeline"}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } finally {
-      setDownloading(false);
-    }
+    download(rows, { filename: chart.projectName || "project-timeline" });
   };
 
   const statusClass = (status?: string) => {
@@ -107,7 +79,7 @@ export function GanttChartViewer({ chart }: GanttChartViewerProps) {
             variant="outline"
             size="sm"
             onClick={handleDownloadCsv}
-            disabled={downloading}
+            disabled={isDownloading}
             className="gap-2 ml-auto"
           >
             <Download className="h-4 w-4" />
@@ -120,7 +92,7 @@ export function GanttChartViewer({ chart }: GanttChartViewerProps) {
         className="space-y-4"
         style={{
           padding: designSystem.spacing.widgetPadding,
-          paddingTop: designSystem.spacing.widgetPadding / 2,
+          paddingTop: `calc(${designSystem.spacing.widgetPadding} / 2)`,
         }}
       >
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -151,12 +123,9 @@ export function GanttChartViewer({ chart }: GanttChartViewerProps) {
             <thead className="bg-bubble-user text-charcoal-taupe">
               <tr>
                 <th className="px-4 py-3 text-left font-semibold">Task</th>
-                <th className="px-4 py-3 text-left font-semibold">Phase</th>
-                <th className="px-4 py-3 text-left font-semibold">Start</th>
-                <th className="px-4 py-3 text-left font-semibold">End</th>
-                <th className="px-4 py-3 text-left font-semibold">Duration</th>
-                <th className="px-4 py-3 text-left font-semibold">Status</th>
-                <th className="px-4 py-3 text-left font-semibold">Notes</th>
+                <th className="px-4 py-3 text-left font-semibold">Start week</th>
+                <th className="px-4 py-3 text-left font-semibold">End week</th>
+                <th className="px-4 py-3 text-left font-semibold">Duration (weeks)</th>
               </tr>
             </thead>
             <tbody>
@@ -166,22 +135,9 @@ export function GanttChartViewer({ chart }: GanttChartViewerProps) {
                   className="border-b border-border/60 bg-bubble-agent text-bubble-agent-foreground"
                 >
                   <td className="px-4 py-3 font-medium">{task.name}</td>
-                  <td className="px-4 py-3">{task.phase ?? "—"}</td>
                   <td className="px-4 py-3">Week {task.startWeek}</td>
                   <td className="px-4 py-3">Week {task.endWeek}</td>
                   <td className="px-4 py-3">{task.durationWeeks} wk</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-semibold ${statusClass(
-                        task.status
-                      )}`}
-                    >
-                      {task.status ?? "planned"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-bubble-agent-foreground/80">
-                    {task.notes ?? "—"}
-                  </td>
                 </tr>
               ))}
             </tbody>

@@ -61,34 +61,25 @@ export interface BudgetSpreadsheet {
 
 export interface ContractorRow {
   name: string;
-  serviceType: string;
-  areaServed: string;
-  website?: string;
-  contact?: string;
-  rating?: string;
-  notes?: string;
+  specialty: string;
+  url?: string;
 }
 
 export interface ContractorSpreadsheet {
   projectName: string;
-  location: string;
   createdAt: string;
   contractors: ContractorRow[];
 }
 
 export interface MaterialRow {
   material: string;
-  vendor: string;
-  location: string;
-  website?: string;
-  indicativePrice?: string;
-  leadTime?: string;
-  notes?: string;
+  supplier: string;
+  price?: string;
+  url?: string;
 }
 
 export interface MaterialsSpreadsheet {
   projectName: string;
-  location: string;
   createdAt: string;
   materials: MaterialRow[];
 }

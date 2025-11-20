@@ -54,6 +54,83 @@ export type ParsedAssistantMessageContent = {
   designGuide?: DesignGuide;
 };
 
+type JsonRecord = Record<string, unknown>;
+
+type AgentPayloadParserConfig<TPayload extends { messageForCustomer: string }> = {
+  label: string;
+  pickStructured?: (record: JsonRecord) => Partial<TPayload>;
+};
+
+function createAgentPayloadParser<TPayload extends { messageForCustomer: string }>(
+  config: AgentPayloadParserConfig<TPayload>
+) {
+  return (text: string): TPayload | undefined => {
+    const candidate = extractJsonPayload(text);
+    if (!candidate) {
+      return undefined;
+    }
+
+    try {
+      const parsed = JSON.parse(candidate);
+      if (!parsed || typeof parsed !== "object") {
+        return undefined;
+      }
+
+      const record = parsed as JsonRecord;
+      const message =
+        typeof record.messageForCustomer === "string" ? record.messageForCustomer.trim() : "";
+      if (!message) {
+        return undefined;
+      }
+
+      const structured = config.pickStructured?.(record) ?? {};
+      return {
+        messageForCustomer: message,
+        ...structured,
+      } as TPayload;
+    } catch (error) {
+      console.warn(`Failed to parse ${config.label} JSON`, error);
+      return undefined;
+    }
+  };
+}
+
+type StructuredParserConfig<T> = {
+  label: string;
+  guard: (value: unknown) => value is T;
+  nestedKeys?: string[];
+};
+
+function createStructuredObjectParser<T>(config: StructuredParserConfig<T>) {
+  return (text: string): T | undefined => {
+    const candidate = extractJsonPayload(text);
+    if (!candidate) {
+      return undefined;
+    }
+
+    try {
+      const parsed = JSON.parse(candidate);
+      if (config.guard(parsed)) {
+        return parsed;
+      }
+
+      if (parsed && typeof parsed === "object" && config.nestedKeys?.length) {
+        const record = parsed as JsonRecord;
+        for (const key of config.nestedKeys) {
+          const value = record[key];
+          if (config.guard(value)) {
+            return value;
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(`Failed to parse ${config.label} JSON`, error);
+    }
+
+    return undefined;
+  };
+}
+
 export function extractJsonPayload(text: string): string | undefined {
   return extractJsonPayloadMatch(text)?.json;
 }
@@ -144,234 +221,64 @@ export function tryParseDesignInspirationGuidePayload(
   return undefined;
 }
 
-export function tryParseBudgetSpreadsheet(text: string): BudgetSpreadsheet | undefined {
-  const payload = tryParseBudgetAgentPayload(text);
-  if (payload?.spreadsheet) {
-    return payload.spreadsheet;
-  }
+const parseBudgetSpreadsheetJson = createStructuredObjectParser<BudgetSpreadsheet>({
+  label: "budget spreadsheet",
+  guard: isBudgetSpreadsheet,
+  nestedKeys: ["spreadsheet"],
+});
 
-  const candidate = extractJsonPayload(text);
-  if (!candidate) {
-    return undefined;
-  }
-  try {
-    const parsed = JSON.parse(candidate);
-    if (isBudgetSpreadsheet(parsed)) {
-      return parsed;
-    }
-  } catch (error) {
-    console.warn("Failed to parse budget spreadsheet JSON", error);
-  }
-  return undefined;
-}
+const parseContractorSpreadsheetJson = createStructuredObjectParser<ContractorSpreadsheet>({
+  label: "contractor spreadsheet",
+  guard: isContractorSpreadsheet,
+  nestedKeys: ["spreadsheet"],
+});
 
-export function tryParseContractorSpreadsheet(text: string): ContractorSpreadsheet | undefined {
-  const payload = tryParseContractorAgentPayload(text);
-  if (payload?.spreadsheet) {
-    return payload.spreadsheet;
-  }
+const parseMaterialsSpreadsheetJson = createStructuredObjectParser<MaterialsSpreadsheet>({
+  label: "materials spreadsheet",
+  guard: isMaterialsSpreadsheet,
+  nestedKeys: ["spreadsheet"],
+});
 
-  const candidate = extractJsonPayload(text);
-  if (!candidate) {
-    return undefined;
-  }
+const parseGanttChartJson = createStructuredObjectParser<GanttChart>({
+  label: "gantt chart",
+  guard: isGanttChart,
+  nestedKeys: ["ganttChart"],
+});
 
-  try {
-    const parsed = JSON.parse(candidate);
-    if (isContractorSpreadsheet(parsed)) {
-      return parsed;
-    }
-    if (
-      parsed &&
-      typeof parsed === "object" &&
-      parsed !== null &&
-      isContractorSpreadsheet((parsed as Record<string, unknown>).spreadsheet)
-    ) {
-      return (parsed as Record<string, unknown>).spreadsheet as ContractorSpreadsheet;
-    }
-  } catch (error) {
-    console.warn("Failed to parse contractor spreadsheet JSON", error);
-  }
-  return undefined;
-}
+export const tryParseBudgetSpreadsheet = (text: string): BudgetSpreadsheet | undefined =>
+  parseBudgetSpreadsheetJson(text);
 
-export function tryParseMaterialsSpreadsheet(text: string): MaterialsSpreadsheet | undefined {
-  const payload = tryParseMaterialsAgentPayload(text);
-  if (payload?.spreadsheet) {
-    return payload.spreadsheet;
-  }
+export const tryParseContractorSpreadsheet = (text: string): ContractorSpreadsheet | undefined =>
+  parseContractorSpreadsheetJson(text);
 
-  const candidate = extractJsonPayload(text);
-  if (!candidate) {
-    return undefined;
-  }
+export const tryParseMaterialsSpreadsheet = (text: string): MaterialsSpreadsheet | undefined =>
+  parseMaterialsSpreadsheetJson(text);
 
-  try {
-    const parsed = JSON.parse(candidate);
-    if (isMaterialsSpreadsheet(parsed)) {
-      return parsed;
-    }
-    if (
-      parsed &&
-      typeof parsed === "object" &&
-      parsed !== null &&
-      isMaterialsSpreadsheet((parsed as Record<string, unknown>).spreadsheet)
-    ) {
-      return (parsed as Record<string, unknown>).spreadsheet as MaterialsSpreadsheet;
-    }
-  } catch (error) {
-    console.warn("Failed to parse materials spreadsheet JSON", error);
-  }
-  return undefined;
-}
+export const tryParseGanttChart = (text: string): GanttChart | undefined => parseGanttChartJson(text);
 
-export function tryParseGanttChart(text: string): GanttChart | undefined {
-  const payload = tryParseTimelineAgentPayload(text);
-  if (payload?.ganttChart) {
-    return payload.ganttChart;
-  }
+export const tryParseBudgetAgentPayload = createAgentPayloadParser<BudgetAgentPayload>({
+  label: "budget agent payload",
+  pickStructured: (record) =>
+    isBudgetSpreadsheet(record.spreadsheet) ? { spreadsheet: record.spreadsheet } : {},
+});
 
-  const candidate = extractJsonPayload(text);
-  if (!candidate) {
-    return undefined;
-  }
+export const tryParseContractorAgentPayload = createAgentPayloadParser<ContractorAgentPayload>({
+  label: "contractor agent payload",
+  pickStructured: (record) =>
+    isContractorSpreadsheet(record.spreadsheet) ? { spreadsheet: record.spreadsheet } : {},
+});
 
-  try {
-    const parsed = JSON.parse(candidate);
-    if (isGanttChart(parsed)) {
-      return parsed;
-    }
-    if (
-      parsed &&
-      typeof parsed === "object" &&
-      parsed !== null &&
-      isGanttChart((parsed as Record<string, unknown>).ganttChart)
-    ) {
-      return (parsed as Record<string, unknown>).ganttChart as GanttChart;
-    }
-  } catch (error) {
-    console.warn("Failed to parse gantt chart JSON", error);
-  }
-  return undefined;
-}
+export const tryParseMaterialsAgentPayload = createAgentPayloadParser<MaterialsAgentPayload>({
+  label: "materials agent payload",
+  pickStructured: (record) =>
+    isMaterialsSpreadsheet(record.spreadsheet) ? { spreadsheet: record.spreadsheet } : {},
+});
 
-export function tryParseBudgetAgentPayload(text: string): BudgetAgentPayload | undefined {
-  const candidate = extractJsonPayload(text);
-  if (!candidate) {
-    return undefined;
-  }
- 
-  try {
-    const parsed = JSON.parse(candidate);
-    if (!parsed || typeof parsed !== "object") {
-      return undefined;
-    }
-
-    const record = parsed as Record<string, unknown>;
-    const message = typeof record.messageForCustomer === "string" ? record.messageForCustomer.trim() : "";
-    if (!message) {
-      return undefined;
-    }
-
-    const payload: BudgetAgentPayload = { messageForCustomer: message };
-
-    if (isBudgetSpreadsheet(record.spreadsheet)) {
-      payload.spreadsheet = record.spreadsheet;
-    }
-
-    return payload;
-  } catch (error) {
-    console.warn("Failed to parse budget agent payload JSON", error);
-    return undefined;
-  }
-}
-
-export function tryParseContractorAgentPayload(text: string): ContractorAgentPayload | undefined {
-  const candidate = extractJsonPayload(text);
-  if (!candidate) {
-    return undefined;
-  }
-
-  try {
-    const parsed = JSON.parse(candidate);
-    if (!parsed || typeof parsed !== "object") {
-      return undefined;
-    }
-
-    const record = parsed as Record<string, unknown>;
-    const message = typeof record.messageForCustomer === "string" ? record.messageForCustomer.trim() : "";
-    if (!message) {
-      return undefined;
-    }
-
-    const payload: ContractorAgentPayload = { messageForCustomer: message };
-    if (isContractorSpreadsheet(record.spreadsheet)) {
-      payload.spreadsheet = record.spreadsheet;
-    }
-    return payload;
-  } catch (error) {
-    console.warn("Failed to parse contractor agent payload JSON", error);
-    return undefined;
-  }
-}
-
-export function tryParseMaterialsAgentPayload(text: string): MaterialsAgentPayload | undefined {
-  const candidate = extractJsonPayload(text);
-  if (!candidate) {
-    return undefined;
-  }
-
-  try {
-    const parsed = JSON.parse(candidate);
-    if (!parsed || typeof parsed !== "object") {
-      return undefined;
-    }
-
-    const record = parsed as Record<string, unknown>;
-    const message = typeof record.messageForCustomer === "string" ? record.messageForCustomer.trim() : "";
-    if (!message) {
-      return undefined;
-    }
-
-    const payload: MaterialsAgentPayload = { messageForCustomer: message };
-    if (isMaterialsSpreadsheet(record.spreadsheet)) {
-      payload.spreadsheet = record.spreadsheet;
-    }
-    return payload;
-  } catch (error) {
-    console.warn("Failed to parse materials agent payload JSON", error);
-    return undefined;
-  }
-}
-
-export function tryParseTimelineAgentPayload(text: string): TimelineAgentPayload | undefined {
-  const candidate = extractJsonPayload(text);
-  if (!candidate) {
-    return undefined;
-  }
-
-  try {
-    const parsed = JSON.parse(candidate);
-    if (!parsed || typeof parsed !== "object") {
-      return undefined;
-    }
-
-    const record = parsed as Record<string, unknown>;
-    const message = typeof record.messageForCustomer === "string" ? record.messageForCustomer.trim() : "";
-    if (!message) {
-      return undefined;
-    }
-
-    const payload: TimelineAgentPayload = { messageForCustomer: message };
-    if (isGanttChart(record.ganttChart)) {
-      payload.ganttChart = record.ganttChart;
-    }
-    return payload;
-  } catch (error) {
-    console.warn("Failed to parse timeline agent payload JSON", error);
-    return undefined;
-  }
-}
+export const tryParseTimelineAgentPayload = createAgentPayloadParser<TimelineAgentPayload>({
+  label: "timeline agent payload",
+  pickStructured: (record) =>
+    isGanttChart(record.ganttChart) ? { ganttChart: record.ganttChart } : {},
+});
 
 export function parseAssistantMessageContent(text: string): ParsedAssistantMessageContent {
   const normalizedInput = typeof text === "string" ? text : "";

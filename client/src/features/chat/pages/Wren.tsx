@@ -1,5 +1,5 @@
 import { SignedIn, SignedOut, SignIn } from "@clerk/clerk-react";
-import { ChatComposer } from "@features/chat/components/ChatComposer";
+import { ChatInput } from "@features/chat/components/ChatInput";
 import { ChatHeader } from "@features/chat/components/ChatHeader";
 import { MessageList } from "@features/chat/components/MessageList";
 import { useChatSession } from "@features/chat/hooks/useChatSession";
@@ -24,12 +24,12 @@ function WrenChatShell() {
         <ChatHeader />
         <MessageList messages={messages} isSending={isSending} messagesEndRef={messagesEndRef} />
       </div>
-      <ChatComposer
+      <ChatInput
         onSendMessage={sendMessage}
         disabled={isSending}
         uploadedAttachments={uploadedAttachments}
         pendingAttachments={pendingAttachments}
-        isUploading={isUploadingAttachments}
+        isUploadingAttachments={isUploadingAttachments}
         onAddAttachments={addPendingAttachments}
         onRemovePendingAttachment={removePendingAttachment}
         onRemoveUploadedAttachment={removeUploadedAttachment}

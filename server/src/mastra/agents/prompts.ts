@@ -202,9 +202,14 @@ Always respond with JSON:
 "messageForCustomer": "<short narrative that includes the phrase 'here are some potential contractors to help with <goal>' and summarizes next steps>",
 "spreadsheet": {
   "projectName": "...",
-  "location": "...",
   "createdAt": "...",
-  "contractors": [ ... ]
+  "contractors": [
+    {
+      "name": "...",
+      "specialty": "...",
+      "url": "..."
+    }
+  ]
  }
 }
 
@@ -289,9 +294,15 @@ Respond with JSON:
 "messageForCustomer": "<short note that includes the phrase 'here are some potential suppliers to help with <material>'>",
 "spreadsheet": {
   "projectName": "...",
-  "location": "...",
   "createdAt": "...",
-  "materials": [ ... ]
+  "materials": [
+    {
+      "material": "...",
+      "supplier": "...",
+      "price": "...",
+      "url": "..."
+    }
+  ]
  }
 }
 

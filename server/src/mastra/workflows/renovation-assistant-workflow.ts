@@ -186,51 +186,123 @@ const DesignInspirationGuideAgentReplySchema = z.object({
 });
 type DesignInspirationGuideAgentReply = z.infer<typeof DesignInspirationGuideAgentReplySchema>;
 
+type AgentLike = {
+  generate: (input: unknown) => Promise<{ text?: string } & Record<string, unknown>>;
+};
 
-const budgetAgentStep = createStep({
-  id: 'invoke-budget-agent',
-  description: 'Invokes the budget agent for renovation workflow.',
-  inputSchema: OrchestrationStepOutputSchema,
-  outputSchema: BudgetAgentStepOutputSchema,
-  execute: async ({ inputData }) => {
-    const { latestCustomerMessage, conversationHistory } = inputData;
-    // Build the message for the agent
-    let message = latestCustomerMessage;
+function buildConversationAwareMessage({
+  latestCustomerMessage,
+  conversationHistory,
+}: {
+  latestCustomerMessage: string;
+  conversationHistory?: string;
+}) {
+  if (!conversationHistory) {
+    return latestCustomerMessage;
+  }
+  return `Previous conversation context: ${conversationHistory}\n\nUser message: ${latestCustomerMessage}`;
+}
 
+const createConversationAgentInvoker =
+  (agent: AgentLike) => (inputData: OrchestrationStepOutput) => {
+    const message = buildConversationAwareMessage(inputData);
+    return agent.generate(message);
+  };
 
-    // Add conversation history if available
-    if (conversationHistory) {
-      message = `Previous conversation context: ${conversationHistory}\n\nUser message: ${latestCustomerMessage}`;
+async function invokeDesignInspirationGuideAgent(inputData: OrchestrationStepOutput) {
+  const { latestCustomerMessage, conversationHistory, uploadedImageIds, userId } = inputData;
+
+  let uploads: ChatImageUploadWithUrl[] = [];
+  if (uploadedImageIds?.length && userId) {
+    try {
+      uploads = await getUploadsWithSignedUrls(uploadedImageIds, userId);
+    } catch (error) {
+      console.warn('Failed to load uploads for design inspiration guide agent', error);
     }
+  }
 
+  const agentMessage = buildDesignGuideUserMessage({
+    latestCustomerMessage,
+    conversationHistory,
+    uploads,
+  });
 
-    // Generate response using the budgetAgent
-    const response = await budgetAgent.generate(message);
+  return designInspirationGuideAgent.generate(agentMessage);
+}
 
-    if ((response as any).tripwire) {
-      // Guardrail processors blocked this request – return a safe, templated reply.
-      // We log to stderr to avoid leaking user content but keep an audit trail.
-      console.warn('Budget agent request blocked by input processors', {
-        tripwireReason: (response as any).tripwireReason,
-      });
+type AgentInvocationConfig<
+  TOutputSchema extends z.ZodTypeAny,
+  TStructured,
+  TExtra extends Record<string, unknown> = Record<string, never>
+> = {
+  id: string;
+  description: string;
+  selectedAgent: OrchestrationStepOutput['suitableAgent'];
+  outputSchema: TOutputSchema;
+  invokeAgent: (inputData: OrchestrationStepOutput) => Promise<{ text?: string } & Record<string, unknown>>;
+  parseStructured: (text: string) => TStructured | undefined;
+  extendResult?: (structured: TStructured | undefined) => TExtra;
+  tripwireLogLabel: string;
+};
+
+function createAgentInvocationStep<
+  TOutputSchema extends z.ZodTypeAny,
+  TStructured,
+  TExtra extends Record<string, unknown> = Record<string, never>
+>({
+  id,
+  description,
+  selectedAgent,
+  outputSchema,
+  invokeAgent,
+  parseStructured,
+  extendResult,
+  tripwireLogLabel,
+}: AgentInvocationConfig<TOutputSchema, TStructured, TExtra>) {
+  return createStep({
+    id,
+    description,
+    inputSchema: OrchestrationStepOutputSchema,
+    outputSchema,
+    execute: async ({ inputData }) => {
+      const response = await invokeAgent(inputData);
+
+      if ((response as any).tripwire) {
+        console.warn(tripwireLogLabel, {
+          tripwireReason: (response as any).tripwireReason,
+        });
+
+        return {
+          text: blockedRequestReply,
+          structured: undefined,
+          selectedAgent,
+          ...(extendResult ? extendResult(undefined) : {}),
+        };
+      }
+
+      const rawText = response.text || '';
+      const structured = parseStructured(rawText);
+      const normalizedText = structured ? JSON.stringify(structured, null, 2) : rawText;
 
       return {
-        text: blockedRequestReply,
-        structured: undefined,
-        selectedAgent: 'budget-agent' as const,
+        text: normalizedText,
+        structured,
+        selectedAgent,
+        ...(extendResult ? extendResult(structured) : {}),
       };
-    }
+    },
+  });
+}
 
-    const rawText = response.text || '';
-    const structured = tryParseBudgetAgentReply(rawText);
-    const normalizedText = structured ? JSON.stringify(structured, null, 2) : rawText;
 
-    return {
-      text: normalizedText,
-      structured,
-      selectedAgent: 'budget-agent' as const,
-    };
-  },
+const budgetAgentStep = createAgentInvocationStep({
+  id: 'invoke-budget-agent',
+  description: 'Invokes the budget agent for renovation workflow.',
+  selectedAgent: 'budget-agent',
+  outputSchema: BudgetAgentStepOutputSchema,
+  invokeAgent: createConversationAgentInvoker(budgetAgent),
+  parseStructured: parseBudgetAgentReply,
+  tripwireLogLabel: 'Budget agent request blocked by input processors',
 });
 
 const contractorAgentStepOutputSchema = z.object({
@@ -240,45 +312,17 @@ const contractorAgentStepOutputSchema = z.object({
   selectedAgent: z.literal('contractor-agent'),
 });
 
-const contractorAgentStep = createStep({
+const contractorAgentStep = createAgentInvocationStep({
   id: 'invoke-contractor-agent',
   description: 'Invokes the contractor sourcing agent for renovation workflow.',
-  inputSchema: OrchestrationStepOutputSchema,
+  selectedAgent: 'contractor-agent',
   outputSchema: contractorAgentStepOutputSchema,
-  execute: async ({ inputData }) => {
-    const { latestCustomerMessage, conversationHistory } = inputData;
-    let message = latestCustomerMessage;
-
-    if (conversationHistory) {
-      message = `Previous conversation context: ${conversationHistory}\n\nUser message: ${latestCustomerMessage}`;
-    }
-
-    const response = await contractorAgent.generate(message);
-
-    if ((response as any).tripwire) {
-      console.warn('Contractor agent request blocked by input processors', {
-        tripwireReason: (response as any).tripwireReason,
-      });
-
-      return {
-        text: blockedRequestReply,
-        structured: undefined,
-        contractorSpreadsheet: undefined,
-        selectedAgent: 'contractor-agent' as const,
-      };
-    }
-
-    const rawText = response.text || '';
-    const structured = tryParseContractorAgentReply(rawText);
-    const normalizedText = structured ? JSON.stringify(structured, null, 2) : rawText;
-
-    return {
-      text: normalizedText,
-      structured,
-      contractorSpreadsheet: structured?.spreadsheet ?? undefined,
-      selectedAgent: 'contractor-agent' as const,
-    };
-  },
+  invokeAgent: createConversationAgentInvoker(contractorAgent),
+  parseStructured: parseContractorAgentReply,
+  extendResult: (structured) => ({
+    contractorSpreadsheet: structured?.spreadsheet ?? undefined,
+  }),
+  tripwireLogLabel: 'Contractor agent request blocked by input processors',
 });
 
 const timelineAgentStepOutputSchema = z.object({
@@ -288,45 +332,17 @@ const timelineAgentStepOutputSchema = z.object({
   selectedAgent: z.literal('timeline-agent'),
 });
 
-const timelineAgentStep = createStep({
+const timelineAgentStep = createAgentInvocationStep({
   id: 'invoke-timeline-agent',
   description: 'Invokes the timeline and project planner agent.',
-  inputSchema: OrchestrationStepOutputSchema,
+  selectedAgent: 'timeline-agent',
   outputSchema: timelineAgentStepOutputSchema,
-  execute: async ({ inputData }) => {
-    const { latestCustomerMessage, conversationHistory } = inputData;
-    let message = latestCustomerMessage;
-
-    if (conversationHistory) {
-      message = `Previous conversation context: ${conversationHistory}\n\nUser message: ${latestCustomerMessage}`;
-    }
-
-    const response = await timelineAgent.generate(message);
-
-    if ((response as any).tripwire) {
-      console.warn('Timeline agent request blocked by input processors', {
-        tripwireReason: (response as any).tripwireReason,
-      });
-
-      return {
-        text: blockedRequestReply,
-        structured: undefined,
-        ganttChart: undefined,
-        selectedAgent: 'timeline-agent' as const,
-      };
-    }
-
-    const rawText = response.text || '';
-    const structured = tryParseTimelineAgentReply(rawText);
-    const normalizedText = structured ? JSON.stringify(structured, null, 2) : rawText;
-
-    return {
-      text: normalizedText,
-      structured,
-      ganttChart: structured?.ganttChart ?? undefined,
-      selectedAgent: 'timeline-agent' as const,
-    };
-  },
+  invokeAgent: createConversationAgentInvoker(timelineAgent),
+  parseStructured: parseTimelineAgentReply,
+  extendResult: (structured) => ({
+    ganttChart: structured?.ganttChart ?? undefined,
+  }),
+  tripwireLogLabel: 'Timeline agent request blocked by input processors',
 });
 
 const materialsAgentStepOutputSchema = z.object({
@@ -336,45 +352,17 @@ const materialsAgentStepOutputSchema = z.object({
   selectedAgent: z.literal('materials-agent'),
 });
 
-const materialsAgentStep = createStep({
+const materialsAgentStep = createAgentInvocationStep({
   id: 'invoke-materials-agent',
   description: 'Invokes the materials sourcing agent for renovation workflow.',
-  inputSchema: OrchestrationStepOutputSchema,
+  selectedAgent: 'materials-agent',
   outputSchema: materialsAgentStepOutputSchema,
-  execute: async ({ inputData }) => {
-    const { latestCustomerMessage, conversationHistory } = inputData;
-    let message = latestCustomerMessage;
-
-    if (conversationHistory) {
-      message = `Previous conversation context: ${conversationHistory}\n\nUser message: ${latestCustomerMessage}`;
-    }
-
-    const response = await materialsAgent.generate(message);
-
-    if ((response as any).tripwire) {
-      console.warn('Materials agent request blocked by input processors', {
-        tripwireReason: (response as any).tripwireReason,
-      });
-
-      return {
-        text: blockedRequestReply,
-        structured: undefined,
-        materialsSpreadsheet: undefined,
-        selectedAgent: 'materials-agent' as const,
-      };
-    }
-
-    const rawText = response.text || '';
-    const structured = tryParseMaterialsAgentReply(rawText);
-    const normalizedText = structured ? JSON.stringify(structured, null, 2) : rawText;
-
-    return {
-      text: normalizedText,
-      structured,
-      materialsSpreadsheet: structured?.spreadsheet ?? undefined,
-      selectedAgent: 'materials-agent' as const,
-    };
-  },
+  invokeAgent: createConversationAgentInvoker(materialsAgent),
+  parseStructured: parseMaterialsAgentReply,
+  extendResult: (structured) => ({
+    materialsSpreadsheet: structured?.spreadsheet ?? undefined,
+  }),
+  tripwireLogLabel: 'Materials agent request blocked by input processors',
 });
 
 
@@ -385,60 +373,18 @@ const designInspirationGuideAgentStepOutputSchema = z.object({
   selectedAgent: z.literal('design-inspiration-guide-agent'),
 });
 
-const designInspirationGuideAgentStep = createStep({
+const designInspirationGuideAgentStep = createAgentInvocationStep({
   id: 'invoke-design-inspiration-guide-agent',
   description: 'Invokes the design inspiration guide agent for renovation workflow.',
-  inputSchema: OrchestrationStepOutputSchema,
+  selectedAgent: 'design-inspiration-guide-agent',
   outputSchema: designInspirationGuideAgentStepOutputSchema,
-  execute: async ({ inputData }) => {
-    const {
-      latestCustomerMessage,
-      conversationHistory,
-      uploadedImageIds,
-      userId,
-    } = inputData;
-
-    let uploads: ChatImageUploadWithUrl[] = [];
-    if (uploadedImageIds?.length && userId) {
-      try {
-        uploads = await getUploadsWithSignedUrls(uploadedImageIds, userId);
-      } catch (error) {
-        console.warn('Failed to load uploads for design inspiration guide agent', error);
-      }
-    }
-
-    const agentMessage = buildDesignGuideUserMessage({
-      latestCustomerMessage,
-      conversationHistory,
-      uploads,
-    });
-
-    const response = await designInspirationGuideAgent.generate(agentMessage);
-
-    if ((response as any).tripwire) {
-      console.warn('Design inspiration guide agent request blocked by input processors', {
-        tripwireReason: (response as any).tripwireReason,
-      });
-
-      return {
-        text: blockedRequestReply,
-        designGuide: undefined,
-        imageGallery: undefined,
-        selectedAgent: 'design-inspiration-guide-agent' as const,
-      };
-    }
-
-    const rawText = response.text || '';
-    const structured = tryParseDesignInspirationGuideReply(rawText);
-    const normalizedText = structured ? JSON.stringify(structured, null, 2) : rawText;
-
-    return {
-      text: normalizedText,
-      designGuide: structured?.designGuide,
-      imageGallery: structured?.imageGallery ?? undefined,
-      selectedAgent: 'design-inspiration-guide-agent' as const,
-    };
-  },
+  invokeAgent: invokeDesignInspirationGuideAgent,
+  parseStructured: parseDesignInspirationGuideReply,
+  extendResult: (structured) => ({
+    designGuide: structured?.designGuide,
+    imageGallery: structured?.imageGallery ?? undefined,
+  }),
+  tripwireLogLabel: 'Design inspiration guide agent request blocked by input processors',
 });
 
 export const renovationWorkflow = createWorkflow({
@@ -478,15 +424,15 @@ export const renovationWorkflow = createWorkflow({
     let structured =
       normalized.structured ||
       (selectedAgent === 'budget-agent'
-        ? tryParseBudgetAgentReply(fallbackText)
+        ? parseBudgetAgentReply(fallbackText)
         : selectedAgent === 'contractor-agent'
-        ? tryParseContractorAgentReply(fallbackText)
+        ? parseContractorAgentReply(fallbackText)
         : selectedAgent === 'timeline-agent'
-        ? tryParseTimelineAgentReply(fallbackText)
+        ? parseTimelineAgentReply(fallbackText)
         : selectedAgent === 'materials-agent'
-        ? tryParseMaterialsAgentReply(fallbackText)
+        ? parseMaterialsAgentReply(fallbackText)
         : selectedAgent === 'design-inspiration-guide-agent'
-        ? tryParseDesignInspirationGuideReply(fallbackText)
+        ? parseDesignInspirationGuideReply(fallbackText)
         : undefined);
 
     const result: {
@@ -539,101 +485,49 @@ export const renovationWorkflow = createWorkflow({
   .commit();
 
 
-function tryParseBudgetAgentReply(text: string): BudgetAgentReply | undefined {
-  if (!text) {
-    return undefined;
-  }
+const parseBudgetAgentReply = createStructuredReplyParser(
+  BudgetAgentReplySchema,
+  'budget agent'
+);
+const parseContractorAgentReply = createStructuredReplyParser(
+  ContractorAgentReplySchema,
+  'contractor agent'
+);
+const parseTimelineAgentReply = createStructuredReplyParser(
+  TimelineAgentReplySchema,
+  'timeline agent'
+);
+const parseMaterialsAgentReply = createStructuredReplyParser(
+  MaterialsAgentReplySchema,
+  'materials agent'
+);
+const parseDesignInspirationGuideReply = createStructuredReplyParser(
+  DesignInspirationGuideAgentReplySchema,
+  'design inspiration guide agent'
+);
 
-  const candidate = extractJsonPayload(text);
-  if (!candidate) {
-    return undefined;
-  }
+function createStructuredReplyParser<T>(
+  schema: z.ZodType<T>,
+  logLabel: string
+): (text: string) => T | undefined {
+  return (text: string) => {
+    if (!text) {
+      return undefined;
+    }
 
-  try {
-    const parsed = JSON.parse(candidate);
-    return BudgetAgentReplySchema.parse(parsed);
-  } catch (error) {
-    console.warn('Failed to parse budget agent payload', error);
-    return undefined;
-  }
-}
+    const candidate = extractJsonPayload(text);
+    if (!candidate) {
+      return undefined;
+    }
 
-function tryParseContractorAgentReply(text: string): ContractorAgentReply | undefined {
-  if (!text) {
-    return undefined;
-  }
-
-  const candidate = extractJsonPayload(text);
-  if (!candidate) {
-    return undefined;
-  }
-
-  try {
-    const parsed = JSON.parse(candidate);
-    return ContractorAgentReplySchema.parse(parsed);
-  } catch (error) {
-    console.warn('Failed to parse contractor agent payload', error);
-    return undefined;
-  }
-}
-
-function tryParseTimelineAgentReply(text: string): TimelineAgentReply | undefined {
-  if (!text) {
-    return undefined;
-  }
-
-  const candidate = extractJsonPayload(text);
-  if (!candidate) {
-    return undefined;
-  }
-
-  try {
-    const parsed = JSON.parse(candidate);
-    return TimelineAgentReplySchema.parse(parsed);
-  } catch (error) {
-    console.warn('Failed to parse timeline agent payload', error);
-    return undefined;
-  }
-}
-
-function tryParseMaterialsAgentReply(text: string): MaterialsAgentReply | undefined {
-  if (!text) {
-    return undefined;
-  }
-
-  const candidate = extractJsonPayload(text);
-  if (!candidate) {
-    return undefined;
-  }
-
-  try {
-    const parsed = JSON.parse(candidate);
-    return MaterialsAgentReplySchema.parse(parsed);
-  } catch (error) {
-    console.warn('Failed to parse materials agent payload', error);
-    return undefined;
-  }
-}
-
-function tryParseDesignInspirationGuideReply(
-  text: string
-): DesignInspirationGuideAgentReply | undefined {
-  if (!text) {
-    return undefined;
-  }
-
-  const candidate = extractJsonPayload(text);
-  if (!candidate) {
-    return undefined;
-  }
-
-  try {
-    const parsed = JSON.parse(candidate);
-    return DesignInspirationGuideAgentReplySchema.parse(parsed);
-  } catch (error) {
-    console.warn('Failed to parse design inspiration guide payload', error);
-    return undefined;
-  }
+    try {
+      const parsed = JSON.parse(candidate);
+      return schema.parse(parsed);
+    } catch (error) {
+      console.warn(`Failed to parse ${logLabel} payload`, error);
+      return undefined;
+    }
+  };
 }
 
 type MultiModalTextPart = { type: 'text'; text: string };

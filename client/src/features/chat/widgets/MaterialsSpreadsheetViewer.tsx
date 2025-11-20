@@ -1,16 +1,17 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Download, Package } from "lucide-react";
 import { Button } from "@/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/card";
 import type { MaterialsSpreadsheet } from "@features/chat/types";
 import { designSystem } from "@/theme/designSystem";
+import { useCsvDownload } from "@shared/hooks/useCsvDownload";
 
 interface MaterialsSpreadsheetViewerProps {
   spreadsheet: MaterialsSpreadsheet;
 }
 
 export function MaterialsSpreadsheetViewer({ spreadsheet }: MaterialsSpreadsheetViewerProps) {
-  const [downloading, setDownloading] = useState(false);
+  const { isDownloading, download } = useCsvDownload({ defaultFilename: "materials-shortlist" });
 
   const sortedMaterials = useMemo(() => {
     return [...spreadsheet.materials].sort((a, b) =>
@@ -19,44 +20,20 @@ export function MaterialsSpreadsheetViewer({ spreadsheet }: MaterialsSpreadsheet
   }, [spreadsheet.materials]);
 
   const handleDownloadCsv = () => {
-    try {
-      setDownloading(true);
+    const rows: (string | number)[][] = [
+      ["Project", spreadsheet.projectName],
+      ["Created At", new Date(spreadsheet.createdAt).toLocaleString()],
+      [],
+      ["Material", "Supplier", "Price", "URL"],
+      ...sortedMaterials.map<(string | number)[]>((material) => [
+        material.material,
+        material.supplier,
+        material.price ?? "",
+        material.url ?? "",
+      ]),
+    ];
 
-      const rows: (string | number)[][] = [];
-
-      rows.push(["Project", spreadsheet.projectName]);
-      rows.push(["Created At", new Date(spreadsheet.createdAt).toLocaleString()]);
-      rows.push([]);
-      rows.push(["Material", "Supplier", "Website", "Price", "Notes"]);
-
-      for (const material of sortedMaterials) {
-        rows.push([
-          material.material,
-          material.vendor,
-          material.website ?? "",
-          material.notes ?? "",
-        ]);
-      }
-
-      const csvContent = rows
-        .map((row) => row.map((field) => `"${String(field).replace(/"/g, '""')}"`).join(","))
-        .join("\n");
-
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute(
-        "download",
-        `${spreadsheet.projectName || "materials-shortlist"}.csv`
-      );
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } finally {
-      setDownloading(false);
-    }
+    download(rows, { filename: spreadsheet.projectName || "materials-shortlist" });
   };
 
   return (
@@ -71,16 +48,13 @@ export function MaterialsSpreadsheetViewer({ spreadsheet }: MaterialsSpreadsheet
               <Package className="h-5 w-5" />
               Materials sourcing
             </CardTitle>
-            <CardDescription className="mt-1 text-charcoal-taupe/70">
-              {spreadsheet.location}
-            </CardDescription>
           </div>
 
           <Button
             variant="outline"
             size="sm"
             onClick={handleDownloadCsv}
-            disabled={downloading}
+            disabled={isDownloading}
             className="gap-2 ml-auto"
           >
             <Download className="h-4 w-4" />
@@ -93,7 +67,7 @@ export function MaterialsSpreadsheetViewer({ spreadsheet }: MaterialsSpreadsheet
         className="space-y-4"
         style={{
           padding: designSystem.spacing.widgetPadding,
-          paddingTop: designSystem.spacing.widgetPadding / 2,
+          paddingTop: `calc(${designSystem.spacing.widgetPadding} / 2)`,
         }}
       >
         <div className="overflow-x-auto">
@@ -101,40 +75,34 @@ export function MaterialsSpreadsheetViewer({ spreadsheet }: MaterialsSpreadsheet
             <thead className="bg-bubble-agent text-bubble-agent-foreground">
               <tr>
                 <th className="px-4 py-3 text-left font-semibold">Material</th>
-                <th className="px-4 py-3 text-left font-semibold">Vendor</th>
-                <th className="px-4 py-3 text-left font-semibold">Location</th>
-                <th className="px-4 py-3 text-left font-semibold">Website</th>
-                <th className="px-4 py-3 text-left font-semibold">Price / Range</th>
-                <th className="px-4 py-3 text-left font-semibold">Lead Time</th>
-                <th className="px-4 py-3 text-left font-semibold">Notes</th>
+                <th className="px-4 py-3 text-left font-semibold">Supplier</th>
+                <th className="px-4 py-3 text-left font-semibold">Price</th>
+                <th className="px-4 py-3 text-left font-semibold">URL</th>
               </tr>
             </thead>
             <tbody>
               {sortedMaterials.map((material, index) => (
                 <tr
-                  key={`${material.vendor}-${material.material}-${index}`}
+                  key={`${material.supplier}-${material.material}-${index}`}
                   className="border-b border-border/60 bg-bubble-user text-charcoal-taupe"
                 >
                   <td className="px-4 py-3 font-medium">{material.material}</td>
-                  <td className="px-4 py-3">{material.vendor}</td>
-                  <td className="px-4 py-3">{material.location}</td>
+                  <td className="px-4 py-3">{material.supplier}</td>
+                  <td className="px-4 py-3">{material.price ?? "—"}</td>
                   <td className="px-4 py-3">
-                    {material.website ? (
+                    {material.url ? (
                       <a
-                        href={material.website}
+                        href={material.url}
                         target="_blank"
                         rel="noreferrer"
                         className="text-primary underline"
                       >
-                        Website
+                        Link
                       </a>
                     ) : (
                       "—"
                     )}
                   </td>
-                  <td className="px-4 py-3">{material.indicativePrice ?? "—"}</td>
-                  <td className="px-4 py-3">{material.leadTime ?? "—"}</td>
-                  <td className="px-4 py-3 text-charcoal-taupe/80">{material.notes ?? "—"}</td>
                 </tr>
               ))}
             </tbody>

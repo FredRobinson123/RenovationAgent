@@ -50,12 +50,8 @@ export function isContractorRow(value: unknown): value is ContractorRow {
   const record = value as Record<string, unknown>;
   return (
     typeof record.name === "string" &&
-    typeof record.serviceType === "string" &&
-    typeof record.areaServed === "string" &&
-    (record.website === undefined || record.website === null || typeof record.website === "string") &&
-    (record.contact === undefined || record.contact === null || typeof record.contact === "string") &&
-    (record.rating === undefined || record.rating === null || typeof record.rating === "string") &&
-    (record.notes === undefined || record.notes === null || typeof record.notes === "string")
+    typeof record.specialty === "string" &&
+    (record.url === undefined || record.url === null || typeof record.url === "string")
   );
 }
 
@@ -66,7 +62,6 @@ export function isContractorSpreadsheet(value: unknown): value is ContractorSpre
   const record = value as Record<string, unknown>;
   return (
     typeof record.projectName === "string" &&
-    typeof record.location === "string" &&
     typeof record.createdAt === "string" &&
     Array.isArray(record.contractors) &&
     record.contractors.every(isContractorRow)
@@ -80,14 +75,9 @@ export function isMaterialRow(value: unknown): value is MaterialRow {
   const record = value as Record<string, unknown>;
   return (
     typeof record.material === "string" &&
-    typeof record.vendor === "string" &&
-    typeof record.location === "string" &&
-    (record.website === undefined || record.website === null || typeof record.website === "string") &&
-    (record.indicativePrice === undefined ||
-      record.indicativePrice === null ||
-      typeof record.indicativePrice === "string") &&
-    (record.leadTime === undefined || record.leadTime === null || typeof record.leadTime === "string") &&
-    (record.notes === undefined || record.notes === null || typeof record.notes === "string")
+    typeof record.supplier === "string" &&
+    (record.price === undefined || record.price === null || typeof record.price === "string") &&
+    (record.url === undefined || record.url === null || typeof record.url === "string")
   );
 }
 
@@ -98,7 +88,6 @@ export function isMaterialsSpreadsheet(value: unknown): value is MaterialsSpread
   const record = value as Record<string, unknown>;
   return (
     typeof record.projectName === "string" &&
-    typeof record.location === "string" &&
     typeof record.createdAt === "string" &&
     Array.isArray(record.materials) &&
     record.materials.every(isMaterialRow)

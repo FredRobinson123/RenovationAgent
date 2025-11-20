@@ -1,9 +1,10 @@
+import { useMemo } from "react";
 import { Download, PoundSterling } from "lucide-react";
 import { Button } from "@/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/card";
 import type { BudgetSpreadsheet } from "@/features/chat/types";
-import { useMemo, useState } from "react";
 import { designSystem } from "@/theme/designSystem";
+import { useCsvDownload } from "@shared/hooks/useCsvDownload";
 
 interface BudgetSpreadsheetViewerProps {
   spreadsheet: BudgetSpreadsheet;
@@ -11,7 +12,7 @@ interface BudgetSpreadsheetViewerProps {
 }
 
 export function BudgetSpreadsheetViewer({ spreadsheet, currencyCode = "GBP" }: BudgetSpreadsheetViewerProps) {
-  const [downloading, setDownloading] = useState(false);
+  const { isDownloading, download } = useCsvDownload({ defaultFilename: "renovation-budget" });
   const currencyFormatter = useMemo(
     () =>
       new Intl.NumberFormat(undefined, {
@@ -23,59 +24,30 @@ export function BudgetSpreadsheetViewer({ spreadsheet, currencyCode = "GBP" }: B
   );
 
   const handleDownloadCsv = () => {
-    try {
-      setDownloading(true);
+    const headerRows: (string | number)[][] = [
+      ["Project", spreadsheet.projectName],
+      ["Generated At", new Date(spreadsheet.createdAt).toLocaleString()],
+      [],
+      ["Category", "Description", "Cost", "Notes"],
+    ];
 
-      const rows: (string | number)[][] = [];
+    const lineRows = spreadsheet.lineItems.map<(string | number)[]>(item => [
+      item.category,
+      item.description,
+      item.cost,
+      item.note ?? "",
+    ]);
 
-      // Header info
-      rows.push(["Project", spreadsheet.projectName]);
-      rows.push(["Generated At", new Date(spreadsheet.createdAt).toLocaleString()]);
-      rows.push([]);
+    const summaryRows: (string | number)[][] = [
+      [],
+      ["Total budget", spreadsheet.totalBudget],
+      ["Contingency amount", spreadsheet.contingencyAmount],
+      ["Total (before contingency)", spreadsheet.total],
+    ];
 
-      // Table header
-      rows.push(["Category", "Description", "Cost", "Notes"]);
-
-      // Line items
-      for (const item of spreadsheet.lineItems) {
-        rows.push([
-          item.category,
-          item.description,
-          item.cost,
-          item.note ?? "",
-        ]);
-      }
-
-      rows.push([]);
-      rows.push(["Total budget", spreadsheet.totalBudget]);
-      rows.push(["Contingency amount", spreadsheet.contingencyAmount]);
-      rows.push(["Total (before contingency)", spreadsheet.total]);
-
-      const csvContent = rows
-        .map((row) =>
-          row
-            .map((field) =>
-              `"${String(field).replace(/"/g, '""')}"`
-            )
-            .join(",")
-        )
-        .join("\n");
-
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute(
-        "download",
-        `${spreadsheet.projectName || "renovation-budget"}.csv`
-      );
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } finally {
-      setDownloading(false);
-    }
+    download([...headerRows, ...lineRows, ...summaryRows], {
+      filename: spreadsheet.projectName || "renovation-budget",
+    });
   };
 
   const summaryStats = [
@@ -116,7 +88,7 @@ export function BudgetSpreadsheetViewer({ spreadsheet, currencyCode = "GBP" }: B
               variant="outline"
               size="sm"
               onClick={handleDownloadCsv}
-              disabled={downloading}
+              disabled={isDownloading}
               data-testid="button-download-csv"
               className="gap-2 ml-auto"
             >

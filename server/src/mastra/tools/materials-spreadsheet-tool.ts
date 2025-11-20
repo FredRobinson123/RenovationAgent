@@ -1,12 +1,11 @@
-import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
+import { createTimestampedSpreadsheetTool } from './spreadsheet-tool-factory.js';
 
 export const MaterialRowSchema = z.object({
   material: z.string().describe('Material or product name'),
-  vendor: z.string().describe('Supplier'),
-  website: z.string().url().optional().describe('Direct product or vendor URL'),
-  price: z.string().optional().describe('Reference price'),
-  notes: z.string().optional().describe('Anything notable such as sustainability or certifications'),
+  supplier: z.string().describe('Supplier or showroom name'),
+  price: z.string().optional().describe('Reference price or price range'),
+  url: z.string().url().optional().describe('Direct product or supplier URL'),
 });
 
 export type MaterialRow = z.infer<typeof MaterialRowSchema>;
@@ -19,24 +18,22 @@ export const MaterialsSpreadsheetSchema = z.object({
 
 export type MaterialsSpreadsheet = z.infer<typeof MaterialsSpreadsheetSchema>;
 
-export const generateMaterialsSpreadsheet = createTool({
+const MaterialsSpreadsheetInputSchema = z.object({
+  project_name: z.string().describe('Name of the sourcing request'),
+  materials: z
+    .array(MaterialRowSchema)
+    .min(1, 'Provide at least one material/supplier to include in the spreadsheet.'),
+});
+
+export const generateMaterialsSpreadsheet = createTimestampedSpreadsheetTool({
   id: 'generate_materials_spreadsheet',
   description: 'Generates a materials sourcing spreadsheet for the specified area and categories.',
-  inputSchema: z.object({
-    project_name: z.string().describe('Name of the sourcing request'),
-    materials: z
-      .array(MaterialRowSchema)
-      .min(1, 'Provide at least one material/vendor to include in the spreadsheet.'),
-  }),
+  inputSchema: MaterialsSpreadsheetInputSchema,
   outputSchema: MaterialsSpreadsheetSchema,
-  execute: async ({ context }) => {
-    const { project_name, materials } = context;
-
-    return {
-      projectName: project_name,
-      createdAt: new Date().toISOString(),
-      materials,
-    };
-  },
+  buildSpreadsheet: ({ project_name, materials }, createdAt) => ({
+    projectName: project_name,
+    createdAt,
+    materials,
+  }),
 });
 

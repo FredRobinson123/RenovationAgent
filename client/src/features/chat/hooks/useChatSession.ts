@@ -40,6 +40,28 @@ export function useChatSession(): UseChatSessionResult {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pendingAttachmentsRef = useRef<PendingAttachment[]>([]);
 
+  const getClerkToken = useCallback(
+    async (purpose: string, options: { optional?: boolean } = {}) => {
+      try {
+        const token = await getToken();
+        if (!token) {
+          if (options.optional) {
+            return null;
+          }
+          throw new Error("Unable to authenticate your request. Please try signing in again.");
+        }
+        return token;
+      } catch (error) {
+        console.error(`Failed to fetch Clerk token (${purpose})`, error);
+        if (options.optional) {
+          return null;
+        }
+        throw error instanceof Error ? error : new Error("Unable to authenticate your request.");
+      }
+    },
+    [getToken]
+  );
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isSending]);
@@ -119,11 +141,7 @@ export function useChatSession(): UseChatSessionResult {
       setUploadedAttachments((prev) => prev.filter((attachment) => attachment.id !== uploadId));
 
       try {
-        const token = await getToken().catch((error) => {
-          console.error("Failed to fetch Clerk token for deleting uploads", error);
-          return null;
-        });
-
+        const token = await getClerkToken("deleting uploads", { optional: true });
         if (!token) {
           return;
         }
@@ -141,7 +159,7 @@ export function useChatSession(): UseChatSessionResult {
         });
       }
     },
-    [getToken, toast, uploadedAttachments]
+    [getClerkToken, toast, uploadedAttachments]
   );
 
   const uploadPendingAttachments = useCallback(async (): Promise<CustomerImageUpload[]> => {
@@ -151,15 +169,7 @@ export function useChatSession(): UseChatSessionResult {
 
     setIsUploadingAttachments(true);
     try {
-      const token = await getToken().catch((error) => {
-        console.error("Failed to fetch Clerk token for uploads", error);
-        return null;
-      });
-
-      if (!token) {
-        throw new Error("Unable to authenticate uploads. Please sign in again.");
-      }
-
+      const token = await getClerkToken("image uploads");
       const filesToUpload = pendingAttachments.map((attachment) => attachment.file);
       const uploaded = await uploadImages(filesToUpload, { sessionId, token });
       pendingAttachments.forEach((attachment) => revokePreviewUrl(attachment));
@@ -183,7 +193,7 @@ export function useChatSession(): UseChatSessionResult {
     } finally {
       setIsUploadingAttachments(false);
     }
-  }, [getToken, pendingAttachments, sessionId, toast, uploadedAttachments]);
+  }, [getClerkToken, pendingAttachments, sessionId, toast, uploadedAttachments]);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -214,14 +224,7 @@ export function useChatSession(): UseChatSessionResult {
       setIsSending(true);
 
       try {
-        const token = await getToken().catch((error) => {
-          console.error("Failed to fetch Clerk token", error);
-          return null;
-        });
-
-        if (!token) {
-          throw new Error("Unable to authenticate your request. Please try signing in again.");
-        }
+        const token = await getClerkToken("workflow run");
 
         const userMetadata: WorkflowUserContext | undefined = user
           ? {
@@ -291,7 +294,7 @@ export function useChatSession(): UseChatSessionResult {
         setIsSending(false);
       }
     },
-    [getToken, isSending, isUploadingAttachments, messages, sessionId, toast, uploadPendingAttachments, user]
+    [getClerkToken, isSending, isUploadingAttachments, messages, sessionId, toast, uploadPendingAttachments, user]
   );
 
   return {
