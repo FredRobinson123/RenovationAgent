@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/button";
 import { Textarea } from "@/components/textarea";
-import { ArrowUp, X } from "lucide-react";
+import { ArrowUp, Paperclip, X } from "lucide-react";
 import { cn } from "@shared/lib/utils";
 import type { CustomerImageUpload, PendingAttachment } from "@features/chat/types";
 
@@ -192,11 +192,12 @@ export function ChatInput({
               <Button
                 type="button"
                 size="sm"
-                className="rounded-full px-3 text-sm font-medium [border-color:var(--card)]"
+                variant="outline"
+                className="rounded-full px-3 text-sm font-medium no-default-hover-elevate no-default-active-elevate bg-card text-foreground border-card-border shadow-none"
                 onClick={handleBrowseClick}
                 disabled={disabled || sending || isUploadingAttachments}
               >
-                <span className="mr-1">📎</span>
+                <Paperclip className="mr-1 h-4 w-4" />
                 Attach
               </Button>
               {isUploadingAttachments && (
@@ -206,7 +207,7 @@ export function ChatInput({
 
             <Button
               size="icon"
-              className="shrink-0 h-9 w-9 rounded-full [border-color:var(--card)]"
+              className="shrink-0 h-9 w-9 rounded-full border-card-border"
               onClick={handleSend}
               disabled={disabled || sending || isUploadingAttachments || !message.trim()}
               data-testid="button-send-message"
