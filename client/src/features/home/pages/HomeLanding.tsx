@@ -38,9 +38,9 @@ export default function HomeLanding() {
             </Link>
           </Button>
         </section>
-
-        <GalleryGrid />
       </main>
+
+      <GalleryGrid />
     </div>
   );
 }
