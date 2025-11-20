@@ -13,7 +13,7 @@ const googleProvider = createGoogleGenerativeAI({
 });
 
 export const geminiFasttModel = googleProvider('gemini-2.5-flash');
-export const geminiThreeProModel = googleProvider('gemini-3.0-pro');
+export const geminiThreeProModel = googleProvider('gemini-3-pro-preview');
 
 // Separate export so we can later swap to a cheaper or specialized guard model
 // without touching individual agent definitions.
