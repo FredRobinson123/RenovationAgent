@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
 import type { ChatMessage, CustomerImageUpload, PendingAttachment } from "@features/chat/types";
 import { INITIAL_ASSISTANT_MESSAGE } from "@features/chat/constants";
@@ -13,6 +13,47 @@ import { useToast } from "@shared/hooks/use-toast";
 
 const MAX_ATTACHMENTS = 5;
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
+type OptionalTokenOptions = { optional?: boolean };
+type OptionalTokenOnlyOptions = { optional: true };
+
+type GetClerkToken = {
+  (purpose: string): Promise<string>;
+  (purpose: string, options?: { optional?: false }): Promise<string>;
+  (purpose: string, options: OptionalTokenOnlyOptions): Promise<string | null>;
+};
+
+function createGetClerkToken(getTokenFn: () => Promise<string | null>): GetClerkToken {
+  async function getTokenForPurpose(purpose: string): Promise<string>;
+  async function getTokenForPurpose(
+    purpose: string,
+    options?: { optional?: false }
+  ): Promise<string>;
+  async function getTokenForPurpose(
+    purpose: string,
+    options: OptionalTokenOnlyOptions
+  ): Promise<string | null>;
+  async function getTokenForPurpose(purpose: string, options: OptionalTokenOptions = {}) {
+    try {
+      const token = await getTokenFn();
+      if (!token) {
+        if (options.optional) {
+          return null;
+        }
+        throw new Error("Unable to authenticate your request. Please try signing in again.");
+      }
+      return token;
+    } catch (error) {
+      console.error(`Failed to fetch Clerk token (${purpose})`, error);
+      if (options.optional) {
+        return null;
+      }
+      throw error instanceof Error ? error : new Error("Unable to authenticate your request.");
+    }
+  }
+
+  return getTokenForPurpose;
+}
 
 export type UseChatSessionResult = {
   messages: ChatMessage[];
@@ -40,27 +81,7 @@ export function useChatSession(): UseChatSessionResult {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pendingAttachmentsRef = useRef<PendingAttachment[]>([]);
 
-  const getClerkToken = useCallback(
-    async (purpose: string, options: { optional?: boolean } = {}) => {
-      try {
-        const token = await getToken();
-        if (!token) {
-          if (options.optional) {
-            return null;
-          }
-          throw new Error("Unable to authenticate your request. Please try signing in again.");
-        }
-        return token;
-      } catch (error) {
-        console.error(`Failed to fetch Clerk token (${purpose})`, error);
-        if (options.optional) {
-          return null;
-        }
-        throw error instanceof Error ? error : new Error("Unable to authenticate your request.");
-      }
-    },
-    [getToken]
-  );
+  const getClerkToken = useMemo(() => createGetClerkToken(() => getToken()), [getToken]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

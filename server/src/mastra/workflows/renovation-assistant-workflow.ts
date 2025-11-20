@@ -1,7 +1,7 @@
 import { createStep, createWorkflow } from '@mastra/core';
 import { generateText } from 'ai';
 import { geminiFasttModel } from '../llms/index.js';
-import { BudgetAgentReplySchema, BudgetSpreadsheetSchema, type BudgetAgentReply } from '../tools/create-budget-spreadsheet-tool.js';
+import { BudgetAgentReplySchema, BudgetSpreadsheetSchema } from '../tools/create-budget-spreadsheet-tool.js';
 import { ContractorSpreadsheetSchema } from '../tools/contractor-spreadsheet-tool.js';
 import { MaterialsSpreadsheetSchema } from '../tools/materials-spreadsheet-tool.js';
 import { GanttChartSchema } from '../tools/gantt-chart-tool.js';
@@ -141,19 +141,16 @@ const ContractorAgentReplySchema = z.object({
   messageForCustomer: z.string().min(1, 'messageForCustomer must include the narrative response'),
   spreadsheet: ContractorSpreadsheetSchema.optional().nullable(),
 });
-type ContractorAgentReply = z.infer<typeof ContractorAgentReplySchema>;
 
 const TimelineAgentReplySchema = z.object({
   messageForCustomer: z.string().min(1, 'messageForCustomer must include the narrative response'),
   ganttChart: GanttChartSchema.optional().nullable(),
 });
-type TimelineAgentReply = z.infer<typeof TimelineAgentReplySchema>;
 
 const MaterialsAgentReplySchema = z.object({
   messageForCustomer: z.string().min(1, 'messageForCustomer must include the narrative response'),
   spreadsheet: MaterialsSpreadsheetSchema.optional().nullable(),
 });
-type MaterialsAgentReply = z.infer<typeof MaterialsAgentReplySchema>;
 
 const DesignGuideSchema = z.object({
   condensedKeywords: z.array(z.string()).max(6),
@@ -184,10 +181,9 @@ const DesignInspirationGuideAgentReplySchema = z.object({
   designGuide: DesignGuideSchema,
   imageGallery: DesignImageGallerySchema.nullable(),
 });
-type DesignInspirationGuideAgentReply = z.infer<typeof DesignInspirationGuideAgentReplySchema>;
 
 type AgentLike = {
-  generate: (input: unknown) => Promise<{ text?: string } & Record<string, unknown>>;
+  generate: (messages: MessageListInput) => Promise<{ text?: string } & Record<string, unknown>>;
 };
 
 function buildConversationAwareMessage({
@@ -196,11 +192,17 @@ function buildConversationAwareMessage({
 }: {
   latestCustomerMessage: string;
   conversationHistory?: string;
-}) {
-  if (!conversationHistory) {
-    return latestCustomerMessage;
-  }
-  return `Previous conversation context: ${conversationHistory}\n\nUser message: ${latestCustomerMessage}`;
+}): MessageListInput {
+  const baseText = conversationHistory
+    ? `Previous conversation context: ${conversationHistory}\n\nUser message: ${latestCustomerMessage}`
+    : latestCustomerMessage;
+
+  return [
+    {
+      role: 'user',
+      content: baseText,
+    },
+  ];
 }
 
 const createConversationAgentInvoker =
@@ -293,6 +295,51 @@ function createAgentInvocationStep<
     },
   });
 }
+
+function createStructuredReplyParser<T>(
+  schema: z.ZodType<T>,
+  logLabel: string
+): (text: string) => T | undefined {
+  return (text: string) => {
+    if (!text) {
+      return undefined;
+    }
+
+    const candidate = extractJsonPayload(text);
+    if (!candidate) {
+      return undefined;
+    }
+
+    try {
+      const parsed = JSON.parse(candidate);
+      return schema.parse(parsed);
+    } catch (error) {
+      console.warn(`Failed to parse ${logLabel} payload`, error);
+      return undefined;
+    }
+  };
+}
+
+const parseBudgetAgentReply = createStructuredReplyParser(
+  BudgetAgentReplySchema,
+  'budget agent'
+);
+const parseContractorAgentReply = createStructuredReplyParser(
+  ContractorAgentReplySchema,
+  'contractor agent'
+);
+const parseTimelineAgentReply = createStructuredReplyParser(
+  TimelineAgentReplySchema,
+  'timeline agent'
+);
+const parseMaterialsAgentReply = createStructuredReplyParser(
+  MaterialsAgentReplySchema,
+  'materials agent'
+);
+const parseDesignInspirationGuideReply = createStructuredReplyParser(
+  DesignInspirationGuideAgentReplySchema,
+  'design inspiration guide agent'
+);
 
 
 const budgetAgentStep = createAgentInvocationStep({
@@ -484,51 +531,6 @@ export const renovationWorkflow = createWorkflow({
   })
   .commit();
 
-
-const parseBudgetAgentReply = createStructuredReplyParser(
-  BudgetAgentReplySchema,
-  'budget agent'
-);
-const parseContractorAgentReply = createStructuredReplyParser(
-  ContractorAgentReplySchema,
-  'contractor agent'
-);
-const parseTimelineAgentReply = createStructuredReplyParser(
-  TimelineAgentReplySchema,
-  'timeline agent'
-);
-const parseMaterialsAgentReply = createStructuredReplyParser(
-  MaterialsAgentReplySchema,
-  'materials agent'
-);
-const parseDesignInspirationGuideReply = createStructuredReplyParser(
-  DesignInspirationGuideAgentReplySchema,
-  'design inspiration guide agent'
-);
-
-function createStructuredReplyParser<T>(
-  schema: z.ZodType<T>,
-  logLabel: string
-): (text: string) => T | undefined {
-  return (text: string) => {
-    if (!text) {
-      return undefined;
-    }
-
-    const candidate = extractJsonPayload(text);
-    if (!candidate) {
-      return undefined;
-    }
-
-    try {
-      const parsed = JSON.parse(candidate);
-      return schema.parse(parsed);
-    } catch (error) {
-      console.warn(`Failed to parse ${logLabel} payload`, error);
-      return undefined;
-    }
-  };
-}
 
 type MultiModalTextPart = { type: 'text'; text: string };
 type MultiModalImagePart = { type: 'image'; image: string; mediaType?: string };
