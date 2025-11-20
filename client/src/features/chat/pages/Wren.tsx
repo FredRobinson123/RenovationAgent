@@ -49,7 +49,7 @@ export default function WrenPage() {
         <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center space-y-6">
           <div className="space-y-3">
             <h1 className="text-[3.375rem] font-semibold text-foreground font-ren tracking-[0.15em]">
-              Wren
+              Hey, I'm Wren 👋
             </h1>
             <p className="text-lg text-muted-foreground max-w-xl">
               Sign in to continue your renovation planning with Wren.

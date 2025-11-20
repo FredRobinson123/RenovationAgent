@@ -8,10 +8,10 @@ export default function HomeLanding() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-16">
-        <PageTitle title="Freddie Robinson" className="text-left" />
+        <PageTitle title="Hey, I'm Freddie 👋" className="text-left max-w-3xl" />
 
         <section className="space-y-6">
-          <div className="space-y-6 text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed text-left">
+          <div className="space-y-6 text-lg text-muted-foreground max-w-3xl leading-relaxed text-left">
             <p>
               I’m a product manager at Wise who’s slightly obsessed with how people can interact with AI to make
               their life easier. I'm learning lots about conversational flows and search quirks to agentic systems.
@@ -30,16 +30,18 @@ export default function HomeLanding() {
               doable.
             </p>
           </div>
-          <Button
-            asChild
-            size="lg"
-            className="gap-3 font-semibold tracking-wide text-base sm:text-lg lg:text-xl lg:px-10 lg:py-5"
-          >
-            <Link href="/wren">
-              talk to Wren
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+          <div className="flex justify-center">
+            <Button
+              asChild
+              size="lg"
+              className="gap-3 font-semibold tracking-wide text-base sm:text-lg lg:text-xl lg:px-10 lg:py-5"
+            >
+              <Link href="/wren">
+                talk to Wren
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         </section>
       </main>
 
