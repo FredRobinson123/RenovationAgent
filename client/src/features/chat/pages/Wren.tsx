@@ -10,10 +10,12 @@ function WrenChatShell() {
     isSending,
     sendMessage,
     messagesEndRef,
-    attachments,
+    uploadedAttachments,
+    pendingAttachments,
     isUploadingAttachments,
-    uploadAttachments,
-    removeAttachment,
+    addPendingAttachments,
+    removePendingAttachment,
+    removeUploadedAttachment,
   } = useChatSession();
 
   return (
@@ -25,10 +27,12 @@ function WrenChatShell() {
       <ChatComposer
         onSendMessage={sendMessage}
         disabled={isSending}
-        attachments={attachments}
+        uploadedAttachments={uploadedAttachments}
+        pendingAttachments={pendingAttachments}
         isUploading={isUploadingAttachments}
-        onUploadAttachments={uploadAttachments}
-        onRemoveAttachment={removeAttachment}
+        onAddAttachments={addPendingAttachments}
+        onRemovePendingAttachment={removePendingAttachment}
+        onRemoveUploadedAttachment={removeUploadedAttachment}
       />
     </>
   );

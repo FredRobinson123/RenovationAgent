@@ -264,7 +264,37 @@ function handleUploadError(error: unknown, res: ServerResponse, logger: LoggerLi
   logger.error('Image upload route failed', {
     err: error instanceof Error ? { message: error.message, stack: error.stack } : error,
   });
-  sendJson(res, 500, { error: 'Failed to process image upload' });
+  sendJson(res, 500, { error: buildUploadFailureMessage(error) });
+}
+
+function buildUploadFailureMessage(error: unknown): string {
+  if (!(error instanceof Error) || !error.message) {
+    return 'Failed to process image upload.';
+  }
+
+  const normalizedMessage = error.message.toLowerCase();
+
+  if (normalizedMessage.includes('supabase is not configured')) {
+    return 'Uploads backend is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY on the server.';
+  }
+
+  if (normalizedMessage.includes('storage bucket') && normalizedMessage.includes('not found')) {
+    return `Uploads bucket "${serverConfig.supabaseBucket}" does not exist yet. Create it in Supabase storage.`;
+  }
+
+  if (normalizedMessage.includes('failed to upload file to supabase storage')) {
+    return 'Could not write the image to Supabase storage. Check bucket permissions and service role credentials.';
+  }
+
+  if (normalizedMessage.includes('failed to persist upload metadata')) {
+    return 'Upload metadata could not be saved. Confirm the chat_image_uploads table exists (see server/supabase/schema.sql).';
+  }
+
+  if (normalizedMessage.includes('failed to create signed url')) {
+    return 'Uploads succeeded but signed URLs could not be created. Verify the Supabase storage configuration.';
+  }
+
+  return 'Failed to process image upload.';
 }
 
 function sanitizeFileName(fileName: string | undefined): string {

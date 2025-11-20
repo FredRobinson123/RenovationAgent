@@ -41,6 +41,8 @@ A renovation assistant agent built with Mastra that helps users with design and 
   - Create a bucket (defaults to `chat-image-uploads`).
   - Set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_BUCKET` in `server/.env`.
   - Tune upload limits with `UPLOAD_MAX_FILE_SIZE_MB`, `UPLOAD_MAX_FILE_COUNT`, and `UPLOAD_SIGNED_URL_TTL_SECONDS`.
+- Provision the metadata table: run the SQL in `server/supabase/schema.sql` via the Supabase SQL editor or `psql "$SUPABASE_DB_URL" -f server/supabase/schema.sql`. This creates the `chat_image_uploads` table and the default storage bucket.
+- If the upload service is misconfigured (missing bucket, table, or credentials) the API will now respond with a descriptive error such as _“Uploads backend is not configured”_ or _“Uploads bucket "chat-image-uploads" does not exist yet”_ to speed up debugging.
 - Uploaded files are ephemeral. A cron job runs daily at **18:00 Europe/London** (`UPLOAD_CLEANUP_CRON`) and deletes any uploads older than `UPLOAD_RETENTION_HOURS` (24 by default) from both Supabase storage and the metadata table.
 - Need to reclaim space immediately? Run the cleaner manually:
   ```bash

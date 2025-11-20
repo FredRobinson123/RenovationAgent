@@ -12,6 +12,15 @@ export interface CustomerImageUpload {
   signedUrl: string;
 }
 
+export interface PendingAttachment {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  previewUrl: string;
+  file: File;
+}
+
 export interface ChatMessage {
   id: string;
   role: ChatRole;

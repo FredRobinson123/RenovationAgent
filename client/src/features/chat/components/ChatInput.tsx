@@ -3,16 +3,18 @@ import { Button } from "@/components/button";
 import { Textarea } from "@/components/textarea";
 import { Send } from "lucide-react";
 import { cn } from "@shared/lib/utils";
-import type { CustomerImageUpload } from "@features/chat/types";
+import type { CustomerImageUpload, PendingAttachment } from "@features/chat/types";
 import { AttachmentBar } from "@features/chat/components/AttachmentBar";
 
 interface ChatInputProps {
   onSendMessage: (content: string) => Promise<void> | void;
   disabled?: boolean;
   placeholder?: string;
-  attachments: CustomerImageUpload[];
-  onUploadAttachments: (files: FileList | File[]) => Promise<void> | void;
-  onRemoveAttachment: (uploadId: string) => Promise<void> | void;
+  uploadedAttachments: CustomerImageUpload[];
+  pendingAttachments: PendingAttachment[];
+  onAddAttachments: (files: FileList | File[]) => Promise<void> | void;
+  onRemovePendingAttachment: (pendingId: string) => Promise<void> | void;
+  onRemoveUploadedAttachment: (uploadId: string) => Promise<void> | void;
   isUploadingAttachments?: boolean;
 }
 
@@ -20,9 +22,11 @@ export function ChatInput({
   onSendMessage,
   disabled = false,
   placeholder = "Tell me about your renovation project",
-  attachments,
-  onUploadAttachments,
-  onRemoveAttachment,
+  uploadedAttachments,
+  pendingAttachments,
+  onAddAttachments,
+  onRemovePendingAttachment,
+  onRemoveUploadedAttachment,
   isUploadingAttachments = false,
 }: ChatInputProps) {
   const [message, setMessage] = useState("");
@@ -89,11 +93,13 @@ export function ChatInput({
           </Button>
         </div>
         <AttachmentBar
-          attachments={attachments}
-          onUpload={onUploadAttachments}
-          onRemove={onRemoveAttachment}
+          pendingAttachments={pendingAttachments}
+          uploadedAttachments={uploadedAttachments}
+          onAddFiles={onAddAttachments}
+          onRemovePending={onRemovePendingAttachment}
+          onRemoveUploaded={onRemoveUploadedAttachment}
           isUploading={isUploadingAttachments}
-          disabled={disabled || sending}
+          disabled={disabled || sending || isUploadingAttachments}
         />
       </div>
     </div>

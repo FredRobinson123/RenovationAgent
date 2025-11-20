@@ -1,22 +1,26 @@
 import { useRef, useState } from "react";
 import { X } from "lucide-react";
 import { cn } from "@shared/lib/utils";
-import type { CustomerImageUpload } from "@features/chat/types";
+import type { CustomerImageUpload, PendingAttachment } from "@features/chat/types";
 
 type AttachmentBarProps = {
-  attachments: CustomerImageUpload[];
+  pendingAttachments: PendingAttachment[];
+  uploadedAttachments: CustomerImageUpload[];
   isUploading: boolean;
   disabled?: boolean;
-  onUpload: (files: FileList | File[]) => Promise<void> | void;
-  onRemove: (uploadId: string) => Promise<void> | void;
+  onAddFiles: (files: FileList | File[]) => Promise<void> | void;
+  onRemovePending: (pendingId: string) => Promise<void> | void;
+  onRemoveUploaded: (uploadId: string) => Promise<void> | void;
 };
 
 export function AttachmentBar({
-  attachments,
+  pendingAttachments,
+  uploadedAttachments,
   isUploading,
   disabled = false,
-  onUpload,
-  onRemove,
+  onAddFiles,
+  onRemovePending,
+  onRemoveUploaded,
 }: AttachmentBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -32,7 +36,7 @@ export function AttachmentBar({
     if (!event.target.files) {
       return;
     }
-    void onUpload(event.target.files);
+    void onAddFiles(event.target.files);
     event.target.value = "";
   };
 
@@ -55,15 +59,24 @@ export function AttachmentBar({
     if (disabled || !event.dataTransfer.files?.length) {
       return;
     }
-    void onUpload(event.dataTransfer.files);
+    void onAddFiles(event.dataTransfer.files);
   };
 
-  const handleRemove = (uploadId: string) => {
+  const handleRemovePending = (pendingId: string) => {
     if (disabled) {
       return;
     }
-    void onRemove(uploadId);
+    void onRemovePending(pendingId);
   };
+
+  const handleRemoveUploaded = (uploadId: string) => {
+    if (disabled) {
+      return;
+    }
+    void onRemoveUploaded(uploadId);
+  };
+
+  const hasAttachments = pendingAttachments.length > 0 || uploadedAttachments.length > 0;
 
   return (
     <div className="mt-4 space-y-3">
@@ -105,34 +118,55 @@ export function AttachmentBar({
         </div>
       </div>
 
-      {attachments.length > 0 && (
+      {hasAttachments && (
         <div className="flex flex-wrap gap-3">
-          {attachments.map((attachment) => (
-            <div
+          {pendingAttachments.map((attachment) => (
+            <AttachmentPreviewCard
               key={attachment.id}
-              className="relative w-28 overflow-hidden rounded-xl border border-border/60 bg-muted/40"
-            >
-              <img
-                src={attachment.signedUrl}
-                alt={attachment.fileName}
-                className="h-24 w-full object-cover"
-                loading="lazy"
-              />
-              <button
-                type="button"
-                className="absolute right-1 top-1 rounded-full bg-background/80 p-0.5 text-muted-foreground transition hover:bg-background"
-                onClick={() => handleRemove(attachment.id)}
-                aria-label="Remove attachment"
-              >
-                <X className="h-3 w-3" />
-              </button>
-              <div className="px-2 py-2">
-                <p className="truncate text-xs font-medium text-foreground">{attachment.fileName}</p>
-              </div>
-            </div>
+              fileName={attachment.fileName}
+              imageUrl={attachment.previewUrl}
+              statusLabel="Pending upload"
+              onRemove={() => handleRemovePending(attachment.id)}
+            />
+          ))}
+          {uploadedAttachments.map((attachment) => (
+            <AttachmentPreviewCard
+              key={attachment.id}
+              fileName={attachment.fileName}
+              imageUrl={attachment.signedUrl}
+              statusLabel="Ready"
+              onRemove={() => handleRemoveUploaded(attachment.id)}
+            />
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+type AttachmentPreviewCardProps = {
+  fileName: string;
+  imageUrl: string;
+  statusLabel: string;
+  onRemove: () => void;
+};
+
+function AttachmentPreviewCard({ fileName, imageUrl, statusLabel, onRemove }: AttachmentPreviewCardProps) {
+  return (
+    <div className="relative w-28 overflow-hidden rounded-xl border border-border/60 bg-muted/40">
+      <img src={imageUrl} alt={fileName} className="h-24 w-full object-cover" loading="lazy" />
+      <button
+        type="button"
+        className="absolute right-1 top-1 rounded-full bg-background/80 p-0.5 text-muted-foreground transition hover:bg-background"
+        onClick={onRemove}
+        aria-label="Remove attachment"
+      >
+        <X className="h-3 w-3" />
+      </button>
+      <div className="px-2 py-2 space-y-1">
+        <p className="truncate text-xs font-medium text-foreground">{fileName}</p>
+        <p className="text-[10px] text-muted-foreground">{statusLabel}</p>
+      </div>
     </div>
   );
 }

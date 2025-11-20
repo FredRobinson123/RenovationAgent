@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
-import type { ChatMessage, CustomerImageUpload } from "@features/chat/types";
+import type { ChatMessage, CustomerImageUpload, PendingAttachment } from "@features/chat/types";
 import { INITIAL_ASSISTANT_MESSAGE } from "@features/chat/constants";
 import { buildConversationHistory, createMessageId } from "@features/chat/utils/messages";
 import {
@@ -19,28 +19,42 @@ export type UseChatSessionResult = {
   isSending: boolean;
   sendMessage: (content: string) => Promise<void>;
   messagesEndRef: RefObject<HTMLDivElement>;
-  attachments: CustomerImageUpload[];
+  uploadedAttachments: CustomerImageUpload[];
+  pendingAttachments: PendingAttachment[];
   isUploadingAttachments: boolean;
-  uploadAttachments: (files: FileList | File[]) => Promise<void>;
-  removeAttachment: (uploadId: string) => Promise<void>;
+  addPendingAttachments: (files: FileList | File[]) => Promise<void>;
+  removePendingAttachment: (pendingId: string) => void;
+  removeUploadedAttachment: (uploadId: string) => Promise<void>;
 };
 
 export function useChatSession(): UseChatSessionResult {
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_ASSISTANT_MESSAGE]);
   const [isSending, setIsSending] = useState(false);
-  const [attachments, setAttachments] = useState<CustomerImageUpload[]>([]);
+  const [uploadedAttachments, setUploadedAttachments] = useState<CustomerImageUpload[]>([]);
+  const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
   const [sessionId] = useState(() => createMessageId());
   const { getToken } = useAuth();
   const { user } = useUser();
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const pendingAttachmentsRef = useRef<PendingAttachment[]>([]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isSending]);
 
-  const uploadAttachments = useCallback(
+  useEffect(() => {
+    pendingAttachmentsRef.current = pendingAttachments;
+  }, [pendingAttachments]);
+
+  useEffect(() => {
+    return () => {
+      pendingAttachmentsRef.current.forEach((attachment) => URL.revokeObjectURL(attachment.previewUrl));
+    };
+  }, []);
+
+  const addPendingAttachments = useCallback(
     async (fileInput: FileList | File[]) => {
       if (isUploadingAttachments) {
         return;
@@ -65,7 +79,8 @@ export function useChatSession(): UseChatSessionResult {
         return;
       }
 
-      const availableSlots = MAX_ATTACHMENTS - attachments.length;
+      const totalAttachments = pendingAttachments.length + uploadedAttachments.length;
+      const availableSlots = MAX_ATTACHMENTS - totalAttachments;
       if (availableSlots <= 0) {
         toast({
           title: "Attachment limit reached",
@@ -74,7 +89,7 @@ export function useChatSession(): UseChatSessionResult {
         return;
       }
 
-      const filesToUpload = filteredBySize.slice(0, availableSlots);
+      const filesToQueue = filteredBySize.slice(0, availableSlots);
       if (filteredBySize.length > availableSlots) {
         toast({
           title: "Only the first few images were added",
@@ -82,37 +97,26 @@ export function useChatSession(): UseChatSessionResult {
         });
       }
 
-      setIsUploadingAttachments(true);
-      try {
-        const token = await getToken().catch((error) => {
-          console.error("Failed to fetch Clerk token for uploads", error);
-          return null;
-        });
-
-        if (!token) {
-          throw new Error("Unable to authenticate uploads. Please sign in again.");
-        }
-
-        const uploaded = await uploadImages(filesToUpload, { sessionId, token });
-        setAttachments((prev) => [...prev, ...uploaded]);
-      } catch (error) {
-        console.error(error);
-        toast({
-          title: "Upload failed",
-          description: buildFriendlyErrorMessage(error),
-          variant: "destructive",
-        });
-      } finally {
-        setIsUploadingAttachments(false);
-      }
+      const newPending = filesToQueue.map((file) => createPendingAttachment(file));
+      setPendingAttachments((prev) => [...prev, ...newPending]);
     },
-    [attachments.length, getToken, isUploadingAttachments, sessionId, toast]
+    [isUploadingAttachments, pendingAttachments.length, toast, uploadedAttachments.length]
   );
 
-  const removeAttachment = useCallback(
+  const removePendingAttachment = useCallback((pendingId: string) => {
+    setPendingAttachments((prev) => {
+      const target = prev.find((attachment) => attachment.id === pendingId);
+      if (target) {
+        revokePreviewUrl(target);
+      }
+      return prev.filter((attachment) => attachment.id !== pendingId);
+    });
+  }, []);
+
+  const removeUploadedAttachment = useCallback(
     async (uploadId: string) => {
-      const removedAttachment = attachments.find((attachment) => attachment.id === uploadId);
-      setAttachments((prev) => prev.filter((attachment) => attachment.id !== uploadId));
+      const removedAttachment = uploadedAttachments.find((attachment) => attachment.id === uploadId);
+      setUploadedAttachments((prev) => prev.filter((attachment) => attachment.id !== uploadId));
 
       try {
         const token = await getToken().catch((error) => {
@@ -128,7 +132,7 @@ export function useChatSession(): UseChatSessionResult {
       } catch (error) {
         console.error(error);
         if (removedAttachment) {
-          setAttachments((prev) => [...prev, removedAttachment]);
+          setUploadedAttachments((prev) => [...prev, removedAttachment]);
         }
         toast({
           title: "Could not remove image",
@@ -137,8 +141,49 @@ export function useChatSession(): UseChatSessionResult {
         });
       }
     },
-    [attachments, getToken, toast]
+    [getToken, toast, uploadedAttachments]
   );
+
+  const uploadPendingAttachments = useCallback(async (): Promise<CustomerImageUpload[]> => {
+    if (!pendingAttachments.length) {
+      return uploadedAttachments;
+    }
+
+    setIsUploadingAttachments(true);
+    try {
+      const token = await getToken().catch((error) => {
+        console.error("Failed to fetch Clerk token for uploads", error);
+        return null;
+      });
+
+      if (!token) {
+        throw new Error("Unable to authenticate uploads. Please sign in again.");
+      }
+
+      const filesToUpload = pendingAttachments.map((attachment) => attachment.file);
+      const uploaded = await uploadImages(filesToUpload, { sessionId, token });
+      pendingAttachments.forEach((attachment) => revokePreviewUrl(attachment));
+      setPendingAttachments([]);
+
+      let combined: CustomerImageUpload[] = [];
+      setUploadedAttachments((prev) => {
+        combined = [...prev, ...uploaded];
+        return combined;
+      });
+
+      return combined;
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Upload failed",
+        description: buildFriendlyErrorMessage(error),
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsUploadingAttachments(false);
+    }
+  }, [getToken, pendingAttachments, sessionId, toast, uploadedAttachments]);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -147,7 +192,13 @@ export function useChatSession(): UseChatSessionResult {
         return;
       }
 
-      const attachmentSnapshot = attachments;
+      let attachmentSnapshot: CustomerImageUpload[] = [];
+      try {
+        attachmentSnapshot = await uploadPendingAttachments();
+      } catch {
+        return;
+      }
+
       const userMessage: ChatMessage = {
         id: createMessageId(),
         role: "user",
@@ -200,7 +251,7 @@ export function useChatSession(): UseChatSessionResult {
           imageGallery,
         };
         setMessages((prev) => [...prev, assistantMessage]);
-        setAttachments([]);
+        setUploadedAttachments([]);
       } catch (error) {
         console.error(error);
         const friendlyMessage = buildFriendlyErrorMessage(error);
@@ -226,7 +277,7 @@ export function useChatSession(): UseChatSessionResult {
         setIsSending(false);
       }
     },
-    [attachments, getToken, isSending, isUploadingAttachments, messages, sessionId, toast, user]
+    [getToken, isSending, isUploadingAttachments, messages, sessionId, toast, uploadPendingAttachments, user]
   );
 
   return {
@@ -234,10 +285,12 @@ export function useChatSession(): UseChatSessionResult {
     isSending,
     sendMessage,
     messagesEndRef,
-    attachments,
+    uploadedAttachments,
+    pendingAttachments,
     isUploadingAttachments,
-    uploadAttachments,
-    removeAttachment,
+    addPendingAttachments,
+    removePendingAttachment,
+    removeUploadedAttachment,
   };
 }
 
@@ -246,4 +299,21 @@ function normalizeFiles(fileList: FileList | File[]): File[] {
     return fileList;
   }
   return Array.from(fileList);
+}
+
+function createPendingAttachment(file: File): PendingAttachment {
+  const fallbackName = `image-${Date.now()}`;
+  const sanitizedName = file.name?.trim() || fallbackName;
+  return {
+    id: createMessageId(),
+    fileName: sanitizedName,
+    mimeType: file.type || "application/octet-stream",
+    sizeBytes: file.size,
+    previewUrl: URL.createObjectURL(file),
+    file,
+  };
+}
+
+function revokePreviewUrl(attachment: PendingAttachment) {
+  URL.revokeObjectURL(attachment.previewUrl);
 }

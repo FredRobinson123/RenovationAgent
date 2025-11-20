@@ -1,31 +1,37 @@
 import { ChatInput } from "@features/chat/components/ChatInput";
-import type { CustomerImageUpload } from "@features/chat/types";
+import type { CustomerImageUpload, PendingAttachment } from "@features/chat/types";
 
 type ChatComposerProps = {
   onSendMessage: (content: string) => Promise<void>;
   disabled?: boolean;
-  attachments: CustomerImageUpload[];
+  uploadedAttachments: CustomerImageUpload[];
+  pendingAttachments: PendingAttachment[];
   isUploading: boolean;
-  onUploadAttachments: (files: FileList | File[]) => Promise<void>;
-  onRemoveAttachment: (uploadId: string) => Promise<void>;
+  onAddAttachments: (files: FileList | File[]) => Promise<void> | void;
+  onRemovePendingAttachment: (pendingId: string) => Promise<void> | void;
+  onRemoveUploadedAttachment: (uploadId: string) => Promise<void> | void;
 };
 
 export function ChatComposer({
   onSendMessage,
   disabled,
-  attachments,
+  uploadedAttachments,
+  pendingAttachments,
   isUploading,
-  onUploadAttachments,
-  onRemoveAttachment,
+  onAddAttachments,
+  onRemovePendingAttachment,
+  onRemoveUploadedAttachment,
 }: ChatComposerProps) {
   return (
     <ChatInput
       onSendMessage={onSendMessage}
       disabled={disabled}
-      attachments={attachments}
+      uploadedAttachments={uploadedAttachments}
+      pendingAttachments={pendingAttachments}
       isUploadingAttachments={isUploading}
-      onUploadAttachments={onUploadAttachments}
-      onRemoveAttachment={onRemoveAttachment}
+      onAddAttachments={onAddAttachments}
+      onRemovePendingAttachment={onRemovePendingAttachment}
+      onRemoveUploadedAttachment={onRemoveUploadedAttachment}
     />
   );
 }
