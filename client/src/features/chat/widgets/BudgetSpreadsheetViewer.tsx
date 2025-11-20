@@ -5,12 +5,12 @@ import type { BudgetSpreadsheet } from "@/features/chat/types";
 import { useMemo, useState } from "react";
 import { designSystem } from "@/theme/designSystem";
 
-interface SpreadsheetViewerProps {
+interface BudgetSpreadsheetViewerProps {
   spreadsheet: BudgetSpreadsheet;
   currencyCode?: string;
 }
 
-export function SpreadsheetViewer({ spreadsheet, currencyCode = "GBP" }: SpreadsheetViewerProps) {
+export function BudgetSpreadsheetViewer({ spreadsheet, currencyCode = "GBP" }: BudgetSpreadsheetViewerProps) {
   const [downloading, setDownloading] = useState(false);
   const currencyFormatter = useMemo(
     () =>

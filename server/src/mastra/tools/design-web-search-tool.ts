@@ -4,6 +4,19 @@ import Exa from 'exa-js';
 
 
 const exa = new Exa(process.env.EXASEARCH_API_KEY);
+const DESIGN_DOMAINS = ['pinterest.com', 'pin.it'];
+
+function isAllowedDesignDomain(rawUrl?: string | null): boolean {
+    if (!rawUrl) return false;
+    try {
+        const host = new URL(rawUrl).hostname.toLowerCase();
+        return DESIGN_DOMAINS.some(
+            domain => host === domain || host.endsWith(`.${domain}`)
+        );
+    } catch {
+        return false;
+    }
+}
 
 
 export const webSearchResultSchema = z.object({
@@ -44,7 +57,11 @@ export const designWebSearch = createTool({
             text: { maxCharacters: 500 }
         });
 
-        const imageResults = searchResponse.results
+        const curatedResults = searchResponse.results.filter((result) =>
+            isAllowedDesignDomain(result.url)
+        );
+
+        const imageResults = curatedResults
             .filter((result) => typeof result.image === 'string' && result.image.trim().length > 0)
             .slice(0, 5)
             .map((result) => ({

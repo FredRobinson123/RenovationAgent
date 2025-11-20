@@ -1,9 +1,21 @@
-import { designAgent } from "./design-agent.js";
+import { designInspirationGuideAgent } from "./design-inspiration-guide-agent.js";
 import { budgetAgent } from "./budget-agent.js";
-import { moodboardAgent } from "./moodboard-agent.js";
+import { contractorAgent } from "./contractor-agent.js";
+import { timelineAgent } from "./timeline-agent.js";
+import { materialsAgent } from "./materials-agent.js";
 
 export const agents = {
-    designAgent,
+    designInspirationGuideAgent,
     budgetAgent,
-    moodboardAgent,
-}
+    contractorAgent,
+    timelineAgent,
+    materialsAgent,
+};
+
+export {
+    designInspirationGuideAgent,
+    budgetAgent,
+    contractorAgent,
+    timelineAgent,
+    materialsAgent,
+};

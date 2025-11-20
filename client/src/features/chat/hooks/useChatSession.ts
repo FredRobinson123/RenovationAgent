@@ -232,7 +232,16 @@ export function useChatSession(): UseChatSessionResult {
 
         const uploadedImageIds = attachmentSnapshot.map((attachment) => attachment.id);
 
-        const { finalResponse, budgetSpreadsheet, imageGallery, selectedAgent } = await runRenovationWorkflow(
+        const {
+          finalResponse,
+          budgetSpreadsheet,
+          contractorSpreadsheet,
+          materialsSpreadsheet,
+          ganttChart,
+          imageGallery,
+          designGuide,
+          selectedAgent,
+        } = await runRenovationWorkflow(
           trimmed,
           conversationHistory,
           {
@@ -250,7 +259,11 @@ export function useChatSession(): UseChatSessionResult {
           createdAt: new Date().toISOString(),
           source: selectedAgent ?? "assistant",
           budgetSpreadsheet,
+          contractorSpreadsheet,
+          materialsSpreadsheet,
+          ganttChart,
           imageGallery,
+          designGuide,
         };
         setMessages((prev) => [...prev, assistantMessage]);
       } catch (error) {

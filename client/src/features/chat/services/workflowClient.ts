@@ -1,7 +1,21 @@
 import { extractErrorMessage, parseAssistantMessageContent } from "@features/chat/utils/parsers";
-import type { AgentSource, ChatMessage } from "@features/chat/types";
-import type { BudgetSpreadsheet, DesignImageGallery } from "@features/chat/types";
-import { isBudgetSpreadsheet, isDesignImageGallery } from "@features/chat/utils/guards";
+import type {
+  AgentSource,
+  BudgetSpreadsheet,
+  ContractorSpreadsheet,
+  DesignGuide,
+  DesignImageGallery,
+  GanttChart,
+  MaterialsSpreadsheet,
+} from "@features/chat/types";
+import {
+  isBudgetSpreadsheet,
+  isContractorSpreadsheet,
+  isDesignGuide,
+  isDesignImageGallery,
+  isGanttChart,
+  isMaterialsSpreadsheet,
+} from "@features/chat/utils/guards";
 
 const WORKFLOW_ID = "renovation-workflow";
 const LOCALHOST_SERVER_URL = "http://localhost:5001";
@@ -57,7 +71,11 @@ export type WorkflowRunOptions = {
 export type WorkflowRunResult = {
   finalResponse: string;
   budgetSpreadsheet?: BudgetSpreadsheet;
+  contractorSpreadsheet?: ContractorSpreadsheet;
+  materialsSpreadsheet?: MaterialsSpreadsheet;
+  ganttChart?: GanttChart;
   imageGallery?: DesignImageGallery;
+  designGuide?: DesignGuide;
   selectedAgent?: AgentSource;
 };
 
@@ -170,8 +188,23 @@ export async function runRenovationWorkflow(
     pickBudgetSpreadsheet(resultRecord) ??
     pickBudgetSpreadsheet(outputRecord);
 
+  const serverContractorSpreadsheet =
+    pickContractorSpreadsheet(record) ??
+    pickContractorSpreadsheet(resultRecord) ??
+    pickContractorSpreadsheet(outputRecord);
+
+  const serverMaterialsSpreadsheet =
+    pickMaterialsSpreadsheet(record) ??
+    pickMaterialsSpreadsheet(resultRecord) ??
+    pickMaterialsSpreadsheet(outputRecord);
+
+  const serverGanttChart =
+    pickGanttChart(record) ?? pickGanttChart(resultRecord) ?? pickGanttChart(outputRecord);
+
   const serverImageGallery =
     pickImageGallery(record) ?? pickImageGallery(resultRecord) ?? pickImageGallery(outputRecord);
+  const serverDesignGuide =
+    pickDesignGuide(record) ?? pickDesignGuide(resultRecord) ?? pickDesignGuide(outputRecord);
 
   const selectedAgent =
     pickSelectedAgent(record) ?? pickSelectedAgent(resultRecord) ?? pickSelectedAgent(outputRecord);
@@ -179,7 +212,13 @@ export async function runRenovationWorkflow(
   return {
     finalResponse: parsedAssistantMessage.content,
     budgetSpreadsheet: serverSpreadsheet ?? parsedAssistantMessage.budgetSpreadsheet,
+    contractorSpreadsheet:
+      serverContractorSpreadsheet ?? parsedAssistantMessage.contractorSpreadsheet,
+    materialsSpreadsheet:
+      serverMaterialsSpreadsheet ?? parsedAssistantMessage.materialsSpreadsheet,
+    ganttChart: serverGanttChart ?? parsedAssistantMessage.ganttChart,
     imageGallery: serverImageGallery ?? parsedAssistantMessage.imageGallery,
+    designGuide: serverDesignGuide ?? parsedAssistantMessage.designGuide,
     selectedAgent,
   };
 }
@@ -236,6 +275,49 @@ function pickBudgetSpreadsheet(container: Record<string, unknown> | undefined): 
   return undefined;
 }
 
+function pickContractorSpreadsheet(
+  container: Record<string, unknown> | undefined
+): ContractorSpreadsheet | undefined {
+  if (!container) {
+    return undefined;
+  }
+
+  const candidate = container.contractorSpreadsheet;
+  if (isContractorSpreadsheet(candidate)) {
+    return candidate;
+  }
+
+  return undefined;
+}
+
+function pickMaterialsSpreadsheet(
+  container: Record<string, unknown> | undefined
+): MaterialsSpreadsheet | undefined {
+  if (!container) {
+    return undefined;
+  }
+
+  const candidate = container.materialsSpreadsheet;
+  if (isMaterialsSpreadsheet(candidate)) {
+    return candidate;
+  }
+
+  return undefined;
+}
+
+function pickGanttChart(container: Record<string, unknown> | undefined): GanttChart | undefined {
+  if (!container) {
+    return undefined;
+  }
+
+  const candidate = container.ganttChart;
+  if (isGanttChart(candidate)) {
+    return candidate;
+  }
+
+  return undefined;
+}
+
 function pickImageGallery(container: Record<string, unknown> | undefined): DesignImageGallery | undefined {
   if (!container) {
     return undefined;
@@ -243,6 +325,19 @@ function pickImageGallery(container: Record<string, unknown> | undefined): Desig
 
   const candidate = container.imageGallery ?? container.gallery;
   if (isDesignImageGallery(candidate)) {
+    return candidate;
+  }
+
+  return undefined;
+}
+
+function pickDesignGuide(container: Record<string, unknown> | undefined): DesignGuide | undefined {
+  if (!container) {
+    return undefined;
+  }
+
+  const candidate = container.designGuide;
+  if (isDesignGuide(candidate)) {
     return candidate;
   }
 
@@ -261,7 +356,15 @@ function isAgentSource(value: unknown): value is AgentSource {
   if (typeof value !== "string") {
     return false;
   }
-  return ["assistant", "orchestrator", "design-agent", "budget-agent", "moodboard-agent"].includes(value);
+  return [
+    "assistant",
+    "orchestrator",
+    "design-inspiration-guide-agent",
+    "budget-agent",
+    "contractor-agent",
+    "timeline-agent",
+    "materials-agent",
+  ].includes(value);
 }
 
 function createFallbackSessionId(): string {

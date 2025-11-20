@@ -1,9 +1,40 @@
-import type { BudgetSpreadsheet, DesignImageGallery } from "@features/chat/types";
-import { isBudgetSpreadsheet, isDesignImageGallery } from "./guards";
+import type {
+  BudgetSpreadsheet,
+  ContractorSpreadsheet,
+  DesignImageGallery,
+  DesignGuide,
+  DesignInspirationGuidePayload,
+  GanttChart,
+  MaterialsSpreadsheet,
+} from "@features/chat/types";
+import {
+  isBudgetSpreadsheet,
+  isContractorSpreadsheet,
+  isDesignImageGallery,
+  isDesignInspirationGuidePayload,
+  isDesignGuide,
+  isGanttChart,
+  isMaterialsSpreadsheet,
+} from "./guards";
 
 export type BudgetAgentPayload = {
   messageForCustomer: string;
   spreadsheet?: BudgetSpreadsheet;
+};
+
+export type ContractorAgentPayload = {
+  messageForCustomer: string;
+  spreadsheet?: ContractorSpreadsheet;
+};
+
+export type MaterialsAgentPayload = {
+  messageForCustomer: string;
+  spreadsheet?: MaterialsSpreadsheet;
+};
+
+export type TimelineAgentPayload = {
+  messageForCustomer: string;
+  ganttChart?: GanttChart;
 };
 
 type JsonPayloadMatch = {
@@ -16,7 +47,11 @@ type JsonPayloadMatch = {
 export type ParsedAssistantMessageContent = {
   content: string;
   budgetSpreadsheet?: BudgetSpreadsheet;
+  contractorSpreadsheet?: ContractorSpreadsheet;
+  materialsSpreadsheet?: MaterialsSpreadsheet;
+  ganttChart?: GanttChart;
   imageGallery?: DesignImageGallery;
+  designGuide?: DesignGuide;
 };
 
 export function extractJsonPayload(text: string): string | undefined {
@@ -76,6 +111,39 @@ export function tryParseImageGallery(text: string): DesignImageGallery | undefin
   return undefined;
 }
 
+export function tryParseDesignInspirationGuidePayload(
+  text: string
+): DesignInspirationGuidePayload | undefined {
+  const candidate = extractJsonPayload(text);
+  if (!candidate) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(candidate);
+    if (isDesignInspirationGuidePayload(parsed)) {
+      return parsed;
+    }
+    if (parsed && typeof parsed === "object" && "designGuide" in parsed) {
+      const record = parsed as Record<string, unknown>;
+      const payload: DesignInspirationGuidePayload | undefined = isDesignGuide(record.designGuide)
+        ? {
+            designGuide: record.designGuide,
+            imageGallery: isDesignImageGallery(record.imageGallery)
+              ? (record.imageGallery as DesignImageGallery)
+              : undefined,
+          }
+        : undefined;
+      if (payload) {
+        return payload;
+      }
+    }
+  } catch (error) {
+    console.warn("Failed to parse design inspiration guide payload JSON", error);
+  }
+  return undefined;
+}
+
 export function tryParseBudgetSpreadsheet(text: string): BudgetSpreadsheet | undefined {
   const payload = tryParseBudgetAgentPayload(text);
   if (payload?.spreadsheet) {
@@ -93,6 +161,96 @@ export function tryParseBudgetSpreadsheet(text: string): BudgetSpreadsheet | und
     }
   } catch (error) {
     console.warn("Failed to parse budget spreadsheet JSON", error);
+  }
+  return undefined;
+}
+
+export function tryParseContractorSpreadsheet(text: string): ContractorSpreadsheet | undefined {
+  const payload = tryParseContractorAgentPayload(text);
+  if (payload?.spreadsheet) {
+    return payload.spreadsheet;
+  }
+
+  const candidate = extractJsonPayload(text);
+  if (!candidate) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(candidate);
+    if (isContractorSpreadsheet(parsed)) {
+      return parsed;
+    }
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      parsed !== null &&
+      isContractorSpreadsheet((parsed as Record<string, unknown>).spreadsheet)
+    ) {
+      return (parsed as Record<string, unknown>).spreadsheet as ContractorSpreadsheet;
+    }
+  } catch (error) {
+    console.warn("Failed to parse contractor spreadsheet JSON", error);
+  }
+  return undefined;
+}
+
+export function tryParseMaterialsSpreadsheet(text: string): MaterialsSpreadsheet | undefined {
+  const payload = tryParseMaterialsAgentPayload(text);
+  if (payload?.spreadsheet) {
+    return payload.spreadsheet;
+  }
+
+  const candidate = extractJsonPayload(text);
+  if (!candidate) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(candidate);
+    if (isMaterialsSpreadsheet(parsed)) {
+      return parsed;
+    }
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      parsed !== null &&
+      isMaterialsSpreadsheet((parsed as Record<string, unknown>).spreadsheet)
+    ) {
+      return (parsed as Record<string, unknown>).spreadsheet as MaterialsSpreadsheet;
+    }
+  } catch (error) {
+    console.warn("Failed to parse materials spreadsheet JSON", error);
+  }
+  return undefined;
+}
+
+export function tryParseGanttChart(text: string): GanttChart | undefined {
+  const payload = tryParseTimelineAgentPayload(text);
+  if (payload?.ganttChart) {
+    return payload.ganttChart;
+  }
+
+  const candidate = extractJsonPayload(text);
+  if (!candidate) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(candidate);
+    if (isGanttChart(parsed)) {
+      return parsed;
+    }
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      parsed !== null &&
+      isGanttChart((parsed as Record<string, unknown>).ganttChart)
+    ) {
+      return (parsed as Record<string, unknown>).ganttChart as GanttChart;
+    }
+  } catch (error) {
+    console.warn("Failed to parse gantt chart JSON", error);
   }
   return undefined;
 }
@@ -128,6 +286,93 @@ export function tryParseBudgetAgentPayload(text: string): BudgetAgentPayload | u
   }
 }
 
+export function tryParseContractorAgentPayload(text: string): ContractorAgentPayload | undefined {
+  const candidate = extractJsonPayload(text);
+  if (!candidate) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(candidate);
+    if (!parsed || typeof parsed !== "object") {
+      return undefined;
+    }
+
+    const record = parsed as Record<string, unknown>;
+    const message = typeof record.messageForCustomer === "string" ? record.messageForCustomer.trim() : "";
+    if (!message) {
+      return undefined;
+    }
+
+    const payload: ContractorAgentPayload = { messageForCustomer: message };
+    if (isContractorSpreadsheet(record.spreadsheet)) {
+      payload.spreadsheet = record.spreadsheet;
+    }
+    return payload;
+  } catch (error) {
+    console.warn("Failed to parse contractor agent payload JSON", error);
+    return undefined;
+  }
+}
+
+export function tryParseMaterialsAgentPayload(text: string): MaterialsAgentPayload | undefined {
+  const candidate = extractJsonPayload(text);
+  if (!candidate) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(candidate);
+    if (!parsed || typeof parsed !== "object") {
+      return undefined;
+    }
+
+    const record = parsed as Record<string, unknown>;
+    const message = typeof record.messageForCustomer === "string" ? record.messageForCustomer.trim() : "";
+    if (!message) {
+      return undefined;
+    }
+
+    const payload: MaterialsAgentPayload = { messageForCustomer: message };
+    if (isMaterialsSpreadsheet(record.spreadsheet)) {
+      payload.spreadsheet = record.spreadsheet;
+    }
+    return payload;
+  } catch (error) {
+    console.warn("Failed to parse materials agent payload JSON", error);
+    return undefined;
+  }
+}
+
+export function tryParseTimelineAgentPayload(text: string): TimelineAgentPayload | undefined {
+  const candidate = extractJsonPayload(text);
+  if (!candidate) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(candidate);
+    if (!parsed || typeof parsed !== "object") {
+      return undefined;
+    }
+
+    const record = parsed as Record<string, unknown>;
+    const message = typeof record.messageForCustomer === "string" ? record.messageForCustomer.trim() : "";
+    if (!message) {
+      return undefined;
+    }
+
+    const payload: TimelineAgentPayload = { messageForCustomer: message };
+    if (isGanttChart(record.ganttChart)) {
+      payload.ganttChart = record.ganttChart;
+    }
+    return payload;
+  } catch (error) {
+    console.warn("Failed to parse timeline agent payload JSON", error);
+    return undefined;
+  }
+}
+
 export function parseAssistantMessageContent(text: string): ParsedAssistantMessageContent {
   const normalizedInput = typeof text === "string" ? text : "";
   if (!normalizedInput.trim()) {
@@ -136,22 +381,101 @@ export function parseAssistantMessageContent(text: string): ParsedAssistantMessa
 
   const jsonMatch = extractJsonPayloadMatch(normalizedInput);
   const budgetPayload = tryParseBudgetAgentPayload(normalizedInput);
+  const contractorPayload = tryParseContractorAgentPayload(normalizedInput);
+  const materialsPayload = tryParseMaterialsAgentPayload(normalizedInput);
+  const timelinePayload = tryParseTimelineAgentPayload(normalizedInput);
+  const designInspirationPayload = tryParseDesignInspirationGuidePayload(normalizedInput);
+
   const budgetSpreadsheet =
     budgetPayload?.spreadsheet ?? tryParseBudgetSpreadsheet(normalizedInput);
-  const imageGallery = tryParseImageGallery(normalizedInput);
-  const hasStructuredContent = Boolean(budgetPayload || budgetSpreadsheet || imageGallery);
+  const contractorSpreadsheet =
+    contractorPayload?.spreadsheet ?? tryParseContractorSpreadsheet(normalizedInput);
+  const materialsSpreadsheet =
+    materialsPayload?.spreadsheet ?? tryParseMaterialsSpreadsheet(normalizedInput);
+  const ganttChart = timelinePayload?.ganttChart ?? tryParseGanttChart(normalizedInput);
+  const imageGallery =
+    designInspirationPayload?.imageGallery ?? tryParseImageGallery(normalizedInput);
+  const designGuide = designInspirationPayload?.designGuide;
 
-  let content = budgetPayload?.messageForCustomer ?? normalizedInput;
+  const hasStructuredContent = Boolean(
+    budgetPayload ||
+      contractorPayload ||
+      materialsPayload ||
+      timelinePayload ||
+      budgetSpreadsheet ||
+      contractorSpreadsheet ||
+      materialsSpreadsheet ||
+      ganttChart ||
+      imageGallery ||
+      designGuide
+  );
 
-  if (!budgetPayload && hasStructuredContent && jsonMatch) {
+  let content =
+    budgetPayload?.messageForCustomer ??
+    contractorPayload?.messageForCustomer ??
+    materialsPayload?.messageForCustomer ??
+    timelinePayload?.messageForCustomer ??
+    normalizedInput;
+
+  if (designGuide) {
+    content = buildDesignGuideMessage(designGuide);
+  }
+
+  if (
+    !budgetPayload &&
+    !contractorPayload &&
+    !materialsPayload &&
+    !timelinePayload &&
+    !designGuide &&
+    hasStructuredContent &&
+    jsonMatch
+  ) {
     content = stripJsonPayloadFromText(normalizedInput, jsonMatch);
   }
 
   return {
     content: content.trim(),
     budgetSpreadsheet,
+    contractorSpreadsheet,
+    materialsSpreadsheet,
+    ganttChart,
     imageGallery,
+    designGuide,
   };
+}
+
+function buildDesignGuideMessage(designGuide: DesignGuide): string {
+  const sections: string[] = [];
+
+  if (designGuide.longFormGuidance?.trim()) {
+    sections.push(designGuide.longFormGuidance.trim());
+  }
+
+  const metadataLines: string[] = [];
+  if (designGuide.condensedKeywords && designGuide.condensedKeywords.length > 0) {
+    metadataLines.push(
+      `**Pinterest keywords:** ${designGuide.condensedKeywords.join(", ")}`
+    );
+  }
+  if (designGuide.styleLabel) {
+    metadataLines.push(`**Style label:** ${designGuide.styleLabel}`);
+  }
+  if (designGuide.pinterestSearchQuery) {
+    metadataLines.push(`**Pinterest search:** ${designGuide.pinterestSearchQuery}`);
+  }
+  if (metadataLines.length) {
+    sections.push(metadataLines.join("\n"));
+  }
+
+  if (designGuide.clarifyingQuestions && designGuide.clarifyingQuestions.length > 0) {
+    sections.push(
+      ["**Still need:**", ...designGuide.clarifyingQuestions.map((question) => `- ${question}`)].join(
+        "\n"
+      )
+    );
+  }
+
+  return sections.filter(Boolean).join("\n\n").trim() || "Here’s how I’d evolve your space.";
 }
 
 function extractJsonPayloadMatch(text: string): JsonPayloadMatch | undefined {

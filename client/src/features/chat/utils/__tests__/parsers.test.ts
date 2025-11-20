@@ -4,7 +4,14 @@ import {
   parseAssistantMessageContent,
   tryParseBudgetAgentPayload,
   tryParseBudgetSpreadsheet,
+  tryParseContractorAgentPayload,
+  tryParseContractorSpreadsheet,
+  tryParseDesignInspirationGuidePayload,
+  tryParseGanttChart,
   tryParseImageGallery,
+  tryParseMaterialsAgentPayload,
+  tryParseMaterialsSpreadsheet,
+  tryParseTimelineAgentPayload,
 } from "../parsers";
 
 describe("extractJsonPayload", () => {
@@ -87,6 +94,137 @@ describe("tryParseBudgetAgentPayload", () => {
   });
 });
 
+describe("tryParseContractorSpreadsheet", () => {
+  it("parses contractor spreadsheets from payloads", () => {
+    const json = JSON.stringify({
+      messageForCustomer: "Here are some potential contractors to help with your tiling.",
+      spreadsheet: {
+        projectName: "Austin Guest Bath",
+        location: "East Austin",
+        createdAt: new Date().toISOString(),
+        contractors: [
+          {
+            name: "Tile Pros ATX",
+            serviceType: "Tiling",
+            areaServed: "East Austin",
+            website: "https://example.com/tilers",
+            contact: "512-555-0101",
+          },
+        ],
+      },
+    });
+    const result = tryParseContractorSpreadsheet(json);
+    expect(result?.projectName).toBe("Austin Guest Bath");
+    expect(result?.contractors[0]?.name).toBe("Tile Pros ATX");
+  });
+});
+
+describe("tryParseMaterialsSpreadsheet", () => {
+  it("parses materials spreadsheets", () => {
+    const json = JSON.stringify({
+      spreadsheet: {
+        projectName: "Kitchen Countertops",
+        location: "Bay Area",
+        createdAt: new Date().toISOString(),
+        materials: [
+          {
+            material: "Quartz slabs",
+            vendor: "Stone Collective",
+            location: "SF",
+            website: "https://example.com/quartz",
+            indicativePrice: "$95/sq ft",
+          },
+        ],
+      },
+    });
+    const result = tryParseMaterialsSpreadsheet(json);
+    expect(result?.materials[0]?.vendor).toBe("Stone Collective");
+  });
+});
+
+describe("tryParseGanttChart", () => {
+  it("parses gantt chart payloads", () => {
+    const json = JSON.stringify({
+      messageForCustomer: "Here’s how the next six weeks stack up.",
+      ganttChart: {
+        projectName: "Kitchen Refresh",
+        startingWeek: 1,
+        createdAt: new Date().toISOString(),
+        tasks: [
+          { id: "demo", name: "Demo", startWeek: 1, endWeek: 1, durationWeeks: 1 },
+          { id: "rough", name: "MEP Rough-In", startWeek: 2, endWeek: 3, durationWeeks: 2 },
+        ],
+      },
+    });
+    const result = tryParseGanttChart(json);
+    expect(result?.tasks).toHaveLength(2);
+    expect(result?.startingWeek).toBe(1);
+  });
+});
+
+describe("tryParseContractorAgentPayload", () => {
+  it("returns the contractor message and spreadsheet", () => {
+    const json = JSON.stringify({
+      messageForCustomer: "Here are some potential contractors to help with the built-ins.",
+      spreadsheet: {
+        projectName: "Built-in shelving",
+        location: "Brooklyn",
+        createdAt: new Date().toISOString(),
+        contractors: [
+          {
+            name: "BK Millworks",
+            serviceType: "Carpentry",
+            areaServed: "Brooklyn",
+          },
+        ],
+      },
+    });
+    const result = tryParseContractorAgentPayload(json);
+    expect(result?.messageForCustomer).toMatch(/built-ins/);
+    expect(result?.spreadsheet?.location).toBe("Brooklyn");
+  });
+});
+
+describe("tryParseMaterialsAgentPayload", () => {
+  it("parses the materials agent payload", () => {
+    const json = JSON.stringify({
+      messageForCustomer: "Here are some potential suppliers to help with the terrazzo look.",
+      spreadsheet: {
+        projectName: "Terrazzo sourcing",
+        location: "LA",
+        createdAt: new Date().toISOString(),
+        materials: [
+          {
+            material: "Terrazzo-look porcelain",
+            vendor: "Surface Lab",
+            location: "Los Angeles",
+          },
+        ],
+      },
+    });
+    const result = tryParseMaterialsAgentPayload(json);
+    expect(result?.messageForCustomer).toMatch(/suppliers/);
+    expect(result?.spreadsheet?.materials[0]?.material).toContain("Terrazzo");
+  });
+});
+
+describe("tryParseTimelineAgentPayload", () => {
+  it("parses gantt chart payloads", () => {
+    const json = JSON.stringify({
+      messageForCustomer: "Demo + MEP rough-in spans weeks 1–3.",
+      ganttChart: {
+        projectName: "Primary Bath",
+        startingWeek: 1,
+        createdAt: new Date().toISOString(),
+        tasks: [{ id: "demo", name: "Demo", startWeek: 1, endWeek: 1, durationWeeks: 1 }],
+      },
+    });
+    const result = tryParseTimelineAgentPayload(json);
+    expect(result?.messageForCustomer).toMatch(/Demo/);
+    expect(result?.ganttChart?.tasks).toHaveLength(1);
+  });
+});
+
 describe("tryParseImageGallery", () => {
   it("parses gallery data", () => {
     const json = JSON.stringify({
@@ -111,6 +249,36 @@ describe("tryParseImageGallery", () => {
     });
     const result = tryParseImageGallery(json);
     expect(result?.variant).toBe("customer");
+  });
+});
+
+describe("tryParseDesignInspirationGuidePayload", () => {
+  it("parses the design guide and gallery", () => {
+    const json = JSON.stringify({
+      designGuide: {
+        condensedKeywords: ["organic modern living room", "boucle sofa"],
+        pinterestSearchQuery: "organic modern living room boucle sofa",
+        styleLabel: "Organic Modern",
+        longFormGuidance: "Lean into curved seating and a clay plaster palette.",
+        clarifyingQuestions: ["Any heirloom pieces to keep?"],
+      },
+      imageGallery: {
+        query: "organic modern living room boucle sofa",
+        summary: "Warm sculptural neutrals",
+        images: [
+          {
+            id: "a",
+            title: "Curved sofa",
+            imageUrl: "https://example.com/inspo.jpg",
+            sourceUrl: "https://pinterest.com/pin/123",
+          },
+        ],
+      },
+    });
+
+    const result = tryParseDesignInspirationGuidePayload(json);
+    expect(result?.designGuide.styleLabel).toBe("Organic Modern");
+    expect(result?.imageGallery?.images).toHaveLength(1);
   });
 });
 
@@ -141,6 +309,75 @@ describe("parseAssistantMessageContent", () => {
     expect(parsed.content).toBe(message);
     expect(parsed.budgetSpreadsheet).toBeUndefined();
     expect(parsed.imageGallery).toBeUndefined();
+  });
+
+  it("extracts contractor spreadsheets and surfaces the message", () => {
+    const payload = JSON.stringify({
+      messageForCustomer: "Here are some potential contractors to help with your kitchen flooring.",
+      spreadsheet: {
+        projectName: "Kitchen Flooring",
+        location: "Denver",
+        createdAt: new Date().toISOString(),
+        contractors: [
+          {
+            name: "Denver Flooring Co",
+            serviceType: "Flooring",
+            areaServed: "Denver",
+          },
+        ],
+      },
+    });
+    const parsed = parseAssistantMessageContent(payload);
+    expect(parsed.content).toMatch(/potential contractors/);
+    expect(parsed.contractorSpreadsheet?.location).toBe("Denver");
+  });
+
+  it("extracts gantt chart data from timeline agent messages", () => {
+    const payload = JSON.stringify({
+      messageForCustomer: "Here’s the six-week plan.",
+      ganttChart: {
+        projectName: "Laundry Room",
+        startingWeek: 1,
+        createdAt: new Date().toISOString(),
+        tasks: [
+          { id: "demo", name: "Demo", startWeek: 1, endWeek: 1, durationWeeks: 1 },
+          { id: "tile", name: "Tile install", startWeek: 2, endWeek: 3, durationWeeks: 2 },
+        ],
+      },
+    });
+    const parsed = parseAssistantMessageContent(payload);
+    expect(parsed.content).toMatch(/six-week plan/);
+    expect(parsed.ganttChart?.tasks).toHaveLength(2);
+  });
+
+  it("formats design inspiration guide payloads", () => {
+    const payload = JSON.stringify({
+      designGuide: {
+        condensedKeywords: ["organic modern living room", "travertine coffee table"],
+        pinterestSearchQuery: "organic modern living room travertine coffee table",
+        styleLabel: "Organic Modern",
+        longFormGuidance: "Layer boucle seating with sculptural travertine and matte black lighting.",
+        clarifyingQuestions: ["What's your budget ceiling?"],
+      },
+      imageGallery: {
+        query: "organic modern living room travertine coffee table",
+        images: [
+          {
+            id: "pin-1",
+            title: "Travertine + boucle",
+            imageUrl: "https://pinterest.com/pin/1.jpg",
+            sourceUrl: "https://pinterest.com/pin/1",
+          },
+        ],
+      },
+    });
+
+    const parsed = parseAssistantMessageContent(payload);
+    expect(parsed.designGuide?.styleLabel).toBe("Organic Modern");
+    expect(parsed.imageGallery?.query).toMatch(/travertine/);
+    expect(parsed.content).toMatch(/Layer boucle seating/i);
+    expect(parsed.content).toMatch(/Pinterest search:/i);
+    expect(parsed.content).toMatch(/Still need/i);
   });
 });
 

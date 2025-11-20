@@ -1,13 +1,24 @@
 import { Agent } from '@mastra/core/agent';
 import { PromptInjectionDetector, ModerationProcessor } from '@mastra/core/processors';
-import { geminiFasttModel, geminiGuardModel, INPUT_GUARD_THRESHOLD } from '../llms/index.js';
-import { moodboardAgentSystemPrompt } from './prompts.js';
+import { Memory } from '@mastra/memory';
+import { LibSQLStore } from '@mastra/libsql';
+import {
+  geminiThreeProModel,
+  geminiGuardModel,
+  INPUT_GUARD_THRESHOLD,
+} from '../llms/index.js';
+import { designInspirationGuideAgentPrompt } from './prompts.js';
+import { designWebSearch } from '../tools/design-web-search-tool.js';
 
-export const moodboardAgent = new Agent({
-  name: 'Moodboard Agent',
-  description: 'Acknowledges customer uploads and outlines the next moodboard steps.',
-  instructions: moodboardAgentSystemPrompt,
-  model: geminiFasttModel,
+export const designInspirationGuideAgent = new Agent({
+  name: 'Design Inspiration Guide',
+  description:
+    'Helps homeowners clarify their brief, combines text + imagery, and returns Pinterest-ready guidance plus a curated gallery.',
+  instructions: designInspirationGuideAgentPrompt,
+  model: geminiThreeProModel,
+  tools: {
+    designWebSearch,
+  },
   inputProcessors: [
     new PromptInjectionDetector({
       model: geminiGuardModel,
@@ -26,12 +37,24 @@ export const moodboardAgent = new Agent({
     }),
   ],
   defaultGenerateOptions: {
+    toolChoice: 'auto',
     providerOptions: {
       anthropic: {
         stream: false,
       },
     },
   },
+  memory: new Memory({
+    storage: new LibSQLStore({
+      url: 'file:../mastra.db',
+    }),
+    options: {
+      lastMessages: 10,
+      semanticRecall: false,
+      threads: {
+        generateTitle: false,
+      },
+    },
+  }),
 });
 
- 
