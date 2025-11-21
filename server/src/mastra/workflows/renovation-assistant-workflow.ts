@@ -12,6 +12,7 @@ import { budgetAgent } from '../agents/budget-agent.js';
 import { contractorAgent } from '../agents/contractor-agent.js';
 import { timelineAgent } from '../agents/timeline-agent.js';
 import { materialsAgent } from '../agents/materials-agent.js';
+import { guideAgent } from '../agents/guide-agent.js';
 import { getUploadsWithSignedUrls, type ChatImageUploadWithUrl } from '../../services/chat-upload-service.js';
 import type { MessageListInput } from '@mastra/core/agent/message-list';
 
@@ -32,10 +33,11 @@ const agentIdList = [
   'contractor-agent',
   'timeline-agent',
   'materials-agent',
+  'guide-agent',
 ] as const;
 
 export const OrchestrationStepOutputSchema = z.object({
-  conversationStage: z.enum(['START', 'CONTINUE', 'END']).describe('The determined conversation stage'),
+  analysis: z.string().describe('Routing analysis used to determine the suitable agent'),
   suitableAgent: z.enum(agentIdList).describe('The suitable agent to handle the reply'),
   latestCustomerMessage: z.string().describe('The latest message from the customer'),
   conversationHistory: z.string().optional().describe('Optional prior conversation context'),
@@ -57,7 +59,6 @@ function isSupportedAgentId(value: string): value is OrchestrationStepOutput['su
 
 
 /**
- * Replaces placeholders in a prompt template with actual values
  * @param template - The prompt template with placeholders
  * @param replacements - Object with keys matching placeholder names and values to replace them
  * @returns The filled template with all placeholders replaced
@@ -104,17 +105,23 @@ const orchestrationStep = createStep({
       });
 
 
-      const conversationStageMatch = text.match(/<conversation_stage>([\s\S]*?)<\/conversation_stage>/);
-      const conversationStage = conversationStageMatch ? conversationStageMatch[1].trim() : '';
-
+      const analysisMatch = text.match(/<analysis>([\s\S]*?)<\/analysis>/);
+      const analysis = analysisMatch ? analysisMatch[1].trim() : '';
 
       const agentMatch = text.match(/<agent>([\s\S]*?)<\/agent>/);
       const rawAgent = agentMatch ? agentMatch[1].trim() : '';
-      const suitableAgent = isSupportedAgentId(rawAgent) ? rawAgent : 'design-inspiration-guide-agent';
+      const suitableAgent = isSupportedAgentId(rawAgent) ? rawAgent : 'guide-agent';
 
+      // Useful to see in logs when debugging routing behaviour
+      console.info('Renovation orchestration decision', {
+        analysis,
+        rawAgent,
+        suitableAgent,
+        sessionId,
+      });
 
-    return {
-        conversationStage: conversationStage as 'START' | 'CONTINUE' | 'END',
+      return {
+        analysis,
         suitableAgent,
         latestCustomerMessage,
         conversationHistory,
@@ -122,7 +129,7 @@ const orchestrationStep = createStep({
         uploadedImageIds,
         userId,
         userEmail,
-    };
+      };
     } catch (error) {
       console.error('Error generating answer:', error);
       throw new Error('Failed to generate answer');
@@ -413,6 +420,23 @@ const materialsAgentStep = createAgentInvocationStep({
 });
 
 
+const guideAgentStepOutputSchema = z.object({
+  text: z.string(),
+  selectedAgent: z.literal('guide-agent'),
+});
+
+const guideAgentStep = createAgentInvocationStep({
+  id: 'invoke-guide-agent',
+  description:
+    'Invokes the general renovation guide agent when intent is unclear or not handled by a specialist agent.',
+  selectedAgent: 'guide-agent',
+  outputSchema: guideAgentStepOutputSchema,
+  invokeAgent: createConversationAgentInvoker(guideAgent),
+  parseStructured: () => undefined,
+  tripwireLogLabel: 'Guide agent request blocked by input processors',
+});
+
+
 const designInspirationGuideAgentStepOutputSchema = z.object({
   text: z.string(),
   designGuide: DesignGuideSchema.optional(),
@@ -456,6 +480,7 @@ export const renovationWorkflow = createWorkflow({
     [async ({ inputData }) => inputData.suitableAgent === 'contractor-agent', contractorAgentStep],
     [async ({ inputData }) => inputData.suitableAgent === 'timeline-agent', timelineAgentStep],
     [async ({ inputData }) => inputData.suitableAgent === 'materials-agent', materialsAgentStep],
+    [async ({ inputData }) => inputData.suitableAgent === 'guide-agent', guideAgentStep],
     [
       async ({ inputData }) => inputData.suitableAgent === 'design-inspiration-guide-agent',
       designInspirationGuideAgentStep,
