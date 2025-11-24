@@ -1,10 +1,12 @@
 import { useMemo } from "react";
+import { Gantt, ViewMode } from "gantt-task-react";
 import { CalendarClock, Download } from "lucide-react";
 import { Button } from "@/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/card";
 import type { GanttChart } from "@features/chat/types";
 import { designSystem } from "@/theme/designSystem";
 import { useCsvDownload } from "@shared/hooks/useCsvDownload";
+import "gantt-task-react/dist/index.css";
 
 interface GanttChartViewerProps {
   chart: GanttChart;
@@ -44,19 +46,38 @@ export function GanttChartViewer({ chart }: GanttChartViewerProps) {
     download(rows, { filename: chart.projectName || "project-timeline" });
   };
 
-  const statusClass = (status?: string) => {
-    switch (status) {
-      case "complete":
-        return "bg-emerald-600/20 text-emerald-700";
-      case "in-progress":
-        return "bg-primary/20 text-primary";
-      case "blocked":
-        return "bg-rose-600/20 text-rose-600";
-      case "planned":
-      default:
-        return "bg-slate-200 text-slate-700";
-    }
-  };
+  // Map weeks-based tasks to gantt-task-react Task objects.
+  const ganttTasks = useMemo(() => {
+    const projectStart = new Date();
+
+    const weekToDate = (weekNumber: number) => {
+      const date = new Date(projectStart);
+      // Weeks are 1-indexed; treat each as a 7-day block from the project start.
+      date.setDate(date.getDate() + (weekNumber - chart.startingWeek) * 7);
+      return date;
+    };
+
+    return tasks.map((task) => {
+      const start = weekToDate(task.startWeek);
+      const end = weekToDate(task.endWeek + 1); // exclusive end for nicer bar length
+
+      return {
+        id: task.id,
+        name: task.name,
+        start,
+        end,
+        type: "task",
+        progress: 0,
+        project: task.phase,
+        styles: {
+          progressColor: "#111827",
+          progressSelectedColor: "#111827",
+          barBackgroundColor: "#e5e7eb",
+          barBackgroundSelectedColor: "#d1d5db",
+        },
+      } as any;
+    });
+  }, [tasks, chart.startingWeek]);
 
   return (
     <Card
@@ -118,30 +139,16 @@ export function GanttChartViewer({ chart }: GanttChartViewerProps) {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-bubble-user text-charcoal-taupe">
-              <tr>
-                <th className="px-4 py-3 text-left font-semibold">Task</th>
-                <th className="px-4 py-3 text-left font-semibold">Start week</th>
-                <th className="px-4 py-3 text-left font-semibold">End week</th>
-                <th className="px-4 py-3 text-left font-semibold">Duration (weeks)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.map((task) => (
-                <tr
-                  key={task.id}
-                  className="border-b border-border/60 bg-bubble-agent text-bubble-agent-foreground"
-                >
-                  <td className="px-4 py-3 font-medium">{task.name}</td>
-                  <td className="px-4 py-3">Week {task.startWeek}</td>
-                  <td className="px-4 py-3">Week {task.endWeek}</td>
-                  <td className="px-4 py-3">{task.durationWeeks} wk</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="overflow-x-auto rounded-lg border border-bubble-agent-border bg-bubble-agent/80">
+          <div className="min-w-[640px]">
+            <Gantt
+              tasks={ganttTasks}
+              viewMode={ViewMode.Week}
+              listCellWidth="200px"
+              columnWidth={48}
+              todayColor="rgba(148, 163, 184, 0.4)"
+            />
+          </div>
         </div>
       </CardContent>
     </Card>

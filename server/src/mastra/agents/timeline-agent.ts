@@ -9,7 +9,7 @@ import { generateGanttChart } from '../tools/gantt-chart-tool.js';
 
 export const timelineAgent = new Agent({
   name: 'Timeline & Project Planner Agent',
-  description: 'Maps out renovation phases, durations, and sequencing with a weeks-based GANTT plan.',
+  description: 'Maps out renovation phases, durations, and sequencing with a weeks-based project timeline.',
   instructions: timelineAgentSystemPrompt,
   model: geminiFasttModel,
   tools: {

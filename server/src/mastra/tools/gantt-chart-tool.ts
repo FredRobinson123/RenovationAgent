@@ -49,13 +49,13 @@ export type GanttChart = z.infer<typeof GanttChartSchema>;
 export const generateGanttChart = createTool({
   id: 'generate_gantt_chart',
   description:
-    'Generates a weeks-based GANTT chart that sequences renovation tasks with clear start/end weeks.',
+    'Generates a weeks-based renovation timeline that sequences tasks with clear start/end weeks.',
   inputSchema: z.object({
     project_name: z.string().describe('Name of the renovation plan'),
     starting_week: z.number().int().min(1).default(1).describe('Week number to start from'),
     tasks: z
       .array(GanttTaskInputSchema)
-      .min(1, 'Provide at least one task to build a GANTT chart.'),
+      .min(1, 'Provide at least one task to build a project timeline.'),
   }),
   outputSchema: GanttChartSchema,
   execute: async ({ context }) => {
