@@ -1,4 +1,4 @@
-import type { ReactNode, RefObject } from "react";
+import type { RefObject } from "react";
 import type { ChatMessage } from "@features/chat/types";
 import { ChatMessage as ChatMessageBubble } from "@features/chat/components/ChatMessage";
 import { ThinkingIndicator } from "@features/chat/components/ThinkingIndicator";
@@ -8,22 +8,17 @@ type MessageListProps = {
   messages: ChatMessage[];
   isSending: boolean;
   messagesEndRef: RefObject<HTMLDivElement>;
-  footerSlot?: ReactNode;
 };
 
-export function MessageList({ messages, isSending, messagesEndRef, footerSlot }: MessageListProps) {
-  const bottomPaddingClass = footerSlot
-    ? "pb-[22rem] sm:pb-[26rem]"
-    : isSending
-      ? "pb-40 sm:pb-48"
-      : "pb-32";
+export function MessageList({ messages, isSending, messagesEndRef }: MessageListProps) {
+  const bottomPaddingClass = isSending ? "pb-40 sm:pb-48" : "pb-32";
 
   return (
     <div
       className={cn(
         "flex-1 overflow-y-auto px-4",
-        // Give extra space at the bottom for the plan widget and while Wren
-        // is thinking so the loading indicator isn't obscured by the fixed input.
+        // Give extra space at the bottom while Wren is thinking so the loading
+        // indicator isn't obscured by the fixed input.
         bottomPaddingClass
       )}
     >
@@ -31,9 +26,6 @@ export function MessageList({ messages, isSending, messagesEndRef, footerSlot }:
         {messages.map((message) => (
           <ChatMessageBubble key={message.id} message={message} />
         ))}
-
-        {footerSlot}
-        {footerSlot && <div className="h-20 sm:h-32" aria-hidden="true" />}
 
         {isSending && <ThinkingIndicator />}
 

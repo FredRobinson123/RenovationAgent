@@ -41,6 +41,7 @@ function WrenChatShell() {
   }, [hasPlanAssets]);
 
   const showDesktopPanel = hasPlanAssets && !isMobile && isPlanOpen;
+  const shouldShowPlanToggle = hasPlanAssets && !isPlanOpen;
 
   useEffect(() => {
     const previousIds = planAssetIdsRef.current;
@@ -73,23 +74,14 @@ function WrenChatShell() {
     <div className="flex flex-col min-h-screen bg-background">
       <ChatHeader />
       <div className="flex flex-1 overflow-hidden">
-        <div className={`flex flex-col h-full ${showDesktopPanel ? "md:w-1/2" : "w-full"}`}>
-          <div className="flex-1 overflow-hidden">
-            <MessageList
-              messages={messages}
-              isSending={isSending}
-              messagesEndRef={messagesEndRef}
-              footerSlot={
-                hasPlanAssets ? (
-                  <PlanBuilderWidget onOpen={handleOpenPlan} hasUpdates={hasPendingPlanUpdate && !isPlanOpen} />
-                ) : undefined
-              }
-            />
+        <div className={`flex flex-col h-full min-h-0 ${showDesktopPanel ? "md:w-1/2" : "w-full"}`}>
+          <div className="flex-1 overflow-hidden min-h-0">
+            <MessageList messages={messages} isSending={isSending} messagesEndRef={messagesEndRef} />
           </div>
         </div>
 
         {showDesktopPanel && (
-          <div className="hidden md:flex md:w-1/2 border-l border-border bg-muted/10 h-full overflow-hidden">
+          <div className="hidden md:flex md:w-1/2 border-l border-border bg-muted/10 h-full overflow-hidden min-h-0">
             <PlanBuilderPanel planAssets={planAssets} onClose={handleClosePlan} ref={planPanelRef} />
           </div>
         )}
@@ -109,6 +101,10 @@ function WrenChatShell() {
         <div className="fixed inset-0 z-50 bg-background">
           <PlanBuilderPanel planAssets={planAssets} onClose={handleClosePlan} ref={planPanelRef} />
         </div>
+      )}
+
+      {shouldShowPlanToggle && (
+        <PlanBuilderWidget onOpen={handleOpenPlan} hasUpdates={hasPendingPlanUpdate} />
       )}
     </div>
   );

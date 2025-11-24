@@ -68,7 +68,7 @@ export const PlanBuilderPanel = forwardRef<HTMLDivElement, PlanBuilderPanelProps
   return (
     <section
       ref={ref}
-      className="h-full overflow-y-auto bg-muted/20 px-4 pt-4 pb-40 sm:pb-48"
+      className="min-h-full overflow-y-auto bg-muted/20 px-4 pt-4 pb-16 sm:pb-20"
     >
       <div className="flex items-start justify-between gap-4 pb-3">
         <h2 className="text-2xl font-semibold tracking-tight text-foreground">Your renovation plan</h2>
@@ -90,6 +90,7 @@ export const PlanBuilderPanel = forwardRef<HTMLDivElement, PlanBuilderPanelProps
           <PlanAssetGroupSection key={group.assetType} group={group} />
         ))}
       </div>
+      <div className="h-12 md:h-16" aria-hidden="true" />
     </section>
   );
 });
