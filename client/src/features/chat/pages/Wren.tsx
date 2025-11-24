@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { SignedIn, SignedOut, SignIn } from "@clerk/clerk-react";
+import { Plus } from "lucide-react";
 import { ChatInput } from "@features/chat/components/ChatInput";
 import { ChatHeader } from "@features/chat/components/ChatHeader";
 import { MessageList } from "@features/chat/components/MessageList";
@@ -7,6 +8,8 @@ import { useChatSession } from "@features/chat/hooks/useChatSession";
 import { PlanBuilderPanel } from "@features/chat/components/PlanBuilderPanel";
 import { PlanBuilderWidget } from "@features/chat/components/PlanBuilderWidget";
 import { useIsMobile } from "@shared/hooks/use-mobile";
+import { SideNav } from "@/components/SideNav";
+import { resetChatSession } from "@features/chat/utils/session";
 
 function WrenChatShell() {
   const {
@@ -85,29 +88,48 @@ function WrenChatShell() {
 }
 
 export default function WrenPage() {
-  return (
-    <div className="min-h-screen bg-background">
-      <SignedIn>
-        <WrenChatShell />
-      </SignedIn>
+  const handleStartNewChat = () => {
+    resetChatSession();
+    if (typeof window !== "undefined") {
+      window.location.replace("/wren");
+    }
+  };
 
-      <SignedOut>
-        <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center space-y-6">
-          <div className="space-y-3">
-            <h1 className="text-[3.375rem] font-semibold text-foreground font-ren tracking-[0.15em]">
-              Hey, I'm Wren 👋
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-xl">
-              Sign in to continue your renovation planning with Wren.
-            </p>
+  return (
+    <div className="min-h-screen bg-background text-foreground flex">
+      <SideNav
+        label="Home"
+        href="/"
+        secondaryAction={{
+          icon: Plus,
+          label: "Start a new chat with Wren",
+          onClick: handleStartNewChat,
+        }}
+      />
+
+      <div className="flex-1">
+        <SignedIn>
+          <WrenChatShell />
+        </SignedIn>
+
+        <SignedOut>
+          <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center space-y-6">
+            <div className="space-y-3">
+              <h1 className="text-[3.375rem] font-semibold text-foreground font-ren tracking-[0.15em]">
+                Hey, I'm Wren 👋
+              </h1>
+              <p className="text-lg text-muted-foreground max-w-xl">
+                Sign in to continue your renovation planning with Wren.
+              </p>
+            </div>
+            <SignIn
+              appearance={{ elements: { formButtonPrimary: "bg-primary" } }}
+              afterSignInUrl="/wren"
+              afterSignUpUrl="/wren"
+            />
           </div>
-          <SignIn
-            appearance={{ elements: { formButtonPrimary: "bg-primary" } }}
-            afterSignInUrl="/wren"
-            afterSignUpUrl="/wren"
-          />
-        </div>
-      </SignedOut>
+        </SignedOut>
+      </div>
     </div>
   );
 }

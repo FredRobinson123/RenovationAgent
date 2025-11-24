@@ -11,10 +11,10 @@ import {
 import { uploadImages, deleteUpload } from "@features/chat/services/uploadClient";
 import { fetchPlanAssets } from "@features/chat/services/planClient";
 import { useToast } from "@shared/hooks/use-toast";
+import { initializeChatSessionId } from "@features/chat/utils/session";
 
 const MAX_ATTACHMENTS = 5;
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
-const SESSION_STORAGE_KEY = "wren.chat.sessionId";
 
 type OptionalTokenOptions = { optional?: boolean };
 type OptionalTokenOnlyOptions = { optional: true };
@@ -78,7 +78,7 @@ export function useChatSession(): UseChatSessionResult {
   const [uploadedAttachments, setUploadedAttachments] = useState<CustomerImageUpload[]>([]);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
-  const [sessionId] = useState(() => initializeSessionId());
+  const [sessionId] = useState(() => initializeChatSessionId());
   const [planAssets, setPlanAssets] = useState<PlanAsset[]>([]);
   const { getToken } = useAuth();
   const { user } = useUser();
@@ -389,25 +389,6 @@ function createPendingAttachment(file: File): PendingAttachment {
 
 function revokePreviewUrl(attachment: PendingAttachment) {
   URL.revokeObjectURL(attachment.previewUrl);
-}
-
-function initializeSessionId(): string {
-  if (typeof window === "undefined") {
-    return createMessageId();
-  }
-
-  const stored = window.localStorage.getItem(SESSION_STORAGE_KEY);
-  if (stored && stored.trim().length > 0) {
-    return stored;
-  }
-
-  const nextSessionId = createMessageId();
-  try {
-    window.localStorage.setItem(SESSION_STORAGE_KEY, nextSessionId);
-  } catch {
-    // Ignore storage failures; we'll use the generated session ID for this run.
-  }
-  return nextSessionId;
 }
 
 function mergePlanAssets(existing: PlanAsset[], incoming: PlanAsset[]): PlanAsset[] {
