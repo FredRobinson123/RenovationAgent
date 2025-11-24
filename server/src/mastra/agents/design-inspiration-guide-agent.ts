@@ -17,7 +17,6 @@ export const designInspirationGuideAgent = new Agent({
   instructions: designInspirationGuideAgentPrompt,
   model: geminiThreeProModel,
   tools: {
-    designWebSearch,
   },
   inputProcessors: [
     new PromptInjectionDetector({
