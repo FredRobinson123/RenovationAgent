@@ -133,13 +133,7 @@ export interface DesignInspirationGuidePayload {
   imageGallery?: DesignImageGallery | null;
 }
 
-export type PlanAssetType =
-  | 'budget'
-  | 'contractor'
-  | 'materials'
-  | 'timeline'
-  | 'design-guide'
-  | 'image-gallery';
+export type PlanAssetType = 'budget' | 'contractor' | 'materials' | 'timeline' | 'image-gallery';
 
 interface BasePlanAsset {
   id: string;
@@ -172,11 +166,6 @@ export type TimelinePlanAsset = BasePlanAsset & {
   data: GanttChart;
 };
 
-export type DesignGuidePlanAsset = BasePlanAsset & {
-  assetType: 'design-guide';
-  data: DesignGuide;
-};
-
 export type GalleryPlanAsset = BasePlanAsset & {
   assetType: 'image-gallery';
   data: DesignImageGallery;
@@ -187,7 +176,6 @@ export type PlanAsset =
   | ContractorPlanAsset
   | MaterialsPlanAsset
   | TimelinePlanAsset
-  | DesignGuidePlanAsset
   | GalleryPlanAsset;
 
 export type PlanAssetGroup = {

@@ -1,11 +1,10 @@
 import { useMemo } from "react";
-import { CalendarClock, Images, Palette, ShoppingBag, Users, Wallet, X } from "lucide-react";
+import { CalendarClock, Images, ShoppingBag, Users, Wallet, X } from "lucide-react";
 import { Badge } from "@/components/badge";
 import { Button } from "@/components/button";
 import type {
   BudgetPlanAsset,
   ContractorPlanAsset,
-  DesignGuidePlanAsset,
   GalleryPlanAsset,
   MaterialsPlanAsset,
   PlanAsset,
@@ -47,11 +46,6 @@ const PLAN_SECTION_METADATA: Record<PlanAssetType, GroupMeta> = {
     description: "Sequenced phases and dependencies.",
     icon: CalendarClock,
   },
-  "design-guide": {
-    label: "Design Direction",
-    description: "Style guardrails, keywords, and notes.",
-    icon: Palette,
-  },
   "image-gallery": {
     label: "Inspiration Gallery",
     description: "Reference imagery curated for you.",
@@ -59,14 +53,7 @@ const PLAN_SECTION_METADATA: Record<PlanAssetType, GroupMeta> = {
   },
 };
 
-const GROUP_RENDER_ORDER: PlanAssetType[] = [
-  "budget",
-  "contractor",
-  "materials",
-  "timeline",
-  "design-guide",
-  "image-gallery",
-];
+const GROUP_RENDER_ORDER: PlanAssetType[] = ["budget", "contractor", "materials", "timeline", "image-gallery"];
 
 export function PlanBuilderPanel({ planAssets, onClose }: PlanBuilderPanelProps) {
   if (!planAssets.length) {
@@ -78,10 +65,7 @@ export function PlanBuilderPanel({ planAssets, onClose }: PlanBuilderPanelProps)
   return (
     <section className="h-full overflow-y-auto bg-muted/20 px-4 py-4">
       <div className="flex items-start justify-between gap-4 pb-3">
-        <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Your renovation plan</p>
-          <h2 className="text-2xl font-semibold tracking-tight text-foreground mt-1">Saved assets</h2>
-        </div>
+        <h2 className="text-2xl font-semibold tracking-tight text-foreground">Your renovation plan</h2>
         {onClose && (
           <Button
             variant="ghost"
@@ -171,8 +155,6 @@ function renderAssetPreview(asset: PlanAsset) {
       return <MaterialsAssetPreview asset={asset} />;
     case "timeline":
       return <TimelineAssetPreview asset={asset} />;
-    case "design-guide":
-      return <DesignGuideAssetPreview asset={asset} />;
     case "image-gallery":
       return <GalleryAssetPreview asset={asset} />;
     default:
@@ -313,28 +295,6 @@ function TimelineAssetPreview({ asset }: { asset: TimelinePlanAsset }) {
       {hasMore && (
         <p className="text-xs text-muted-foreground">+ {asset.data.tasks.length - tasks.length} upcoming tasks</p>
       )}
-    </div>
-  );
-}
-
-function DesignGuideAssetPreview({ asset }: { asset: DesignGuidePlanAsset }) {
-  return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
-        {asset.data.condensedKeywords.slice(0, 6).map((keyword) => (
-          <Badge key={keyword} variant="secondary" className="rounded-full px-3 py-1 text-xs">
-            {keyword}
-          </Badge>
-        ))}
-      </div>
-      <p className="text-sm text-muted-foreground line-clamp-4">{asset.data.longFormGuidance}</p>
-      {asset.data.clarifyingQuestions?.length ? (
-        <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-1">
-          {asset.data.clarifyingQuestions.slice(0, 2).map((question) => (
-            <li key={question}>{question}</li>
-          ))}
-        </ul>
-      ) : null}
     </div>
   );
 }

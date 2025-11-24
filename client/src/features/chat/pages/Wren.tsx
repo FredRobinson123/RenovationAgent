@@ -38,11 +38,10 @@ function WrenChatShell() {
   }, [hasPlanAssets]);
 
   useEffect(() => {
-    if (hasPlanAssets && !isMobile && !hasAutoOpened) {
-      setIsPlanOpen(true);
+    if (hasPlanAssets && !hasAutoOpened) {
       setHasAutoOpened(true);
     }
-  }, [hasPlanAssets, isMobile, hasAutoOpened]);
+  }, [hasPlanAssets, hasAutoOpened]);
 
   const showDesktopPanel = hasPlanAssets && !isMobile && isPlanOpen;
 
@@ -52,13 +51,17 @@ function WrenChatShell() {
       <div className="flex flex-1 overflow-hidden">
         <div className={`flex flex-col h-full ${showDesktopPanel ? "md:w-1/2" : "w-full"}`}>
           <div className="flex-1 overflow-hidden">
-            <MessageList messages={messages} isSending={isSending} messagesEndRef={messagesEndRef} />
+            <MessageList
+              messages={messages}
+              isSending={isSending}
+              messagesEndRef={messagesEndRef}
+              footerSlot={
+                hasPlanAssets ? (
+                  <PlanBuilderWidget compact={false} onOpen={() => setIsPlanOpen(true)} />
+                ) : undefined
+              }
+            />
           </div>
-          {hasPlanAssets && (
-            <div className="px-4 pb-4">
-              <PlanBuilderWidget assetCount={planAssets.length} onOpen={() => setIsPlanOpen(true)} />
-            </div>
-          )}
         </div>
 
         {showDesktopPanel && (

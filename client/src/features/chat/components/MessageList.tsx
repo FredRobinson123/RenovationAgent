@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 import type { ChatMessage } from "@features/chat/types";
 import { ChatMessage as ChatMessageBubble } from "@features/chat/components/ChatMessage";
 import { ThinkingIndicator } from "@features/chat/components/ThinkingIndicator";
@@ -8,9 +8,10 @@ type MessageListProps = {
   messages: ChatMessage[];
   isSending: boolean;
   messagesEndRef: RefObject<HTMLDivElement>;
+  footerSlot?: ReactNode;
 };
 
-export function MessageList({ messages, isSending, messagesEndRef }: MessageListProps) {
+export function MessageList({ messages, isSending, messagesEndRef, footerSlot }: MessageListProps) {
   return (
     <div
       className={cn(
@@ -24,6 +25,8 @@ export function MessageList({ messages, isSending, messagesEndRef }: MessageList
         {messages.map((message) => (
           <ChatMessageBubble key={message.id} message={message} />
         ))}
+
+        {footerSlot}
 
         {isSending && <ThinkingIndicator />}
 

@@ -192,17 +192,6 @@ function buildPlanAssetInputs({ sessionId, userId, artifacts }: BuildPlanAssetsI
     });
   }
 
-  const designGuide = artifacts.design?.designGuide;
-  if (designGuide) {
-    pushAsset({
-      assetType: 'design-guide',
-      title: designGuide.styleLabel || 'Design guide',
-      summary: safeSummary(designGuide.longFormGuidance),
-      data: designGuide as JsonRecord,
-      sourceAgent: 'design-inspiration-guide-agent',
-    });
-  }
-
   const imageGallery = artifacts.design?.imageGallery;
   if (imageGallery) {
     pushAsset({

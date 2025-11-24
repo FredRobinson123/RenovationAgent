@@ -51,12 +51,12 @@ export async function savePlanAssets(inputs: InsertPlanAssetInput[]): Promise<Pl
   }
 
   const payload = inputs.map((input) => ({
-    session_id: input.sessionId,
-    user_id: input.userId,
-    asset_type: input.assetType,
-    title: input.title,
-    summary: input.summary ?? null,
-    data: input.data,
+        session_id: input.sessionId,
+        user_id: input.userId,
+        asset_type: input.assetType,
+        title: input.title,
+        summary: input.summary ?? null,
+        data: input.data,
     source_agent: input.sourceAgent,
   }));
 

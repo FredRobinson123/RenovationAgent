@@ -3,7 +3,6 @@ import {
   isAgentSource,
   isBudgetSpreadsheet,
   isContractorSpreadsheet,
-  isDesignGuide,
   isDesignImageGallery,
   isGanttChart,
   isMaterialsSpreadsheet,
@@ -79,11 +78,6 @@ function normalizePlanAssetRecord(record: unknown): PlanAsset | undefined {
     case "timeline":
       if (isGanttChart(raw.data)) {
         return { ...base, assetType: "timeline", data: raw.data };
-      }
-      break;
-    case "design-guide":
-      if (isDesignGuide(raw.data)) {
-        return { ...base, assetType: "design-guide", data: raw.data };
       }
       break;
     case "image-gallery":
