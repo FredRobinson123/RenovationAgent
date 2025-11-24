@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { CalendarClock, Images, Palette, ShoppingBag, Users, Wallet } from "lucide-react";
+import { CalendarClock, Images, Palette, ShoppingBag, Users, Wallet, X } from "lucide-react";
 import { Badge } from "@/components/badge";
 import { Button } from "@/components/button";
 import type {
@@ -17,6 +17,7 @@ import { useCsvDownload } from "@shared/hooks/useCsvDownload";
 
 type PlanBuilderPanelProps = {
   planAssets: PlanAsset[];
+  onClose?: () => void;
 };
 
 type GroupMeta = {
@@ -67,34 +68,37 @@ const GROUP_RENDER_ORDER: PlanAssetType[] = [
   "image-gallery",
 ];
 
-export function PlanBuilderPanel({ planAssets }: PlanBuilderPanelProps) {
+export function PlanBuilderPanel({ planAssets, onClose }: PlanBuilderPanelProps) {
+  if (!planAssets.length) {
+    return null;
+  }
+
   const groupedAssets = useMemo(() => buildPlanGroups(planAssets), [planAssets]);
 
   return (
-    <section className="shrink-0 border-b border-border bg-muted/30">
-      <div className="max-w-4xl mx-auto px-4 py-4 space-y-3">
-        <div className="flex flex-col gap-1">
-          <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Renovation plan</p>
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
-            <h2 className="text-2xl font-semibold tracking-tight text-foreground">Plan builder</h2>
-            <p className="text-sm text-muted-foreground">
-              Every spreadsheet, gallery, and schedule Wren generates lives here for easy reference.
-            </p>
-          </div>
+    <section className="h-full overflow-y-auto bg-muted/20 px-4 py-4">
+      <div className="flex items-start justify-between gap-4 pb-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Your renovation plan</p>
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground mt-1">Saved assets</h2>
         </div>
-
-        {groupedAssets.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-background/60 p-6 text-center text-sm text-muted-foreground">
-            Ask Wren for a budget, sourcing plan, or timeline—the saved outputs will appear in this panel as your plan
-            comes together.
-          </div>
-        ) : (
-          <div className="space-y-4 max-h-[22rem] overflow-y-auto pr-2">
-            {groupedAssets.map((group) => (
-              <PlanAssetGroupSection key={group.assetType} group={group} />
-            ))}
-          </div>
+        {onClose && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-full text-muted-foreground hover:text-foreground"
+            onClick={onClose}
+            aria-label="Close renovation plan"
+          >
+            <X className="h-5 w-5" />
+          </Button>
         )}
+      </div>
+
+      <div className="space-y-4">
+        {groupedAssets.map((group) => (
+          <PlanAssetGroupSection key={group.assetType} group={group} />
+        ))}
       </div>
     </section>
   );

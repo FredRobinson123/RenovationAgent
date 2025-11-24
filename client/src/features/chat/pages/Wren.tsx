@@ -1,9 +1,12 @@
+import { useEffect, useState } from "react";
 import { SignedIn, SignedOut, SignIn } from "@clerk/clerk-react";
 import { ChatInput } from "@features/chat/components/ChatInput";
 import { ChatHeader } from "@features/chat/components/ChatHeader";
 import { MessageList } from "@features/chat/components/MessageList";
 import { useChatSession } from "@features/chat/hooks/useChatSession";
 import { PlanBuilderPanel } from "@features/chat/components/PlanBuilderPanel";
+import { PlanBuilderWidget } from "@features/chat/components/PlanBuilderWidget";
+import { useIsMobile } from "@shared/hooks/use-mobile";
 
 function WrenChatShell() {
   const {
@@ -19,13 +22,47 @@ function WrenChatShell() {
     removeUploadedAttachment,
     planAssets,
   } = useChatSession();
+  const isMobile = useIsMobile();
+  const hasPlanAssets = planAssets.length > 0;
+  const [isPlanOpen, setIsPlanOpen] = useState(false);
+  const [hasAutoOpened, setHasAutoOpened] = useState(false);
+
+  useEffect(() => {
+    if (!hasPlanAssets) {
+      setIsPlanOpen(false);
+      setHasAutoOpened(false);
+    }
+  }, [hasPlanAssets]);
+
+  useEffect(() => {
+    if (hasPlanAssets && !isMobile && !hasAutoOpened) {
+      setIsPlanOpen(true);
+      setHasAutoOpened(true);
+    }
+  }, [hasPlanAssets, isMobile, hasAutoOpened]);
+
+  const showDesktopPanel = hasPlanAssets && !isMobile && isPlanOpen;
 
   return (
-    <>
-      <div className="flex flex-col h-screen">
-        <ChatHeader />
-        <PlanBuilderPanel planAssets={planAssets} />
-        <MessageList messages={messages} isSending={isSending} messagesEndRef={messagesEndRef} />
+    <div className="flex flex-col min-h-screen bg-background">
+      <ChatHeader />
+      <div className="flex flex-1 overflow-hidden">
+        <div className={`flex flex-col h-full ${showDesktopPanel ? "md:w-1/2" : "w-full"}`}>
+          <div className="flex-1 overflow-hidden">
+            <MessageList messages={messages} isSending={isSending} messagesEndRef={messagesEndRef} />
+          </div>
+          {hasPlanAssets && (
+            <div className="px-4 pb-4">
+              <PlanBuilderWidget assetCount={planAssets.length} onOpen={() => setIsPlanOpen(true)} />
+            </div>
+          )}
+        </div>
+
+        {showDesktopPanel && (
+          <div className="hidden md:flex md:w-1/2 border-l border-border bg-muted/10">
+            <PlanBuilderPanel planAssets={planAssets} onClose={() => setIsPlanOpen(false)} />
+          </div>
+        )}
       </div>
       <ChatInput
         onSendMessage={sendMessage}
@@ -37,7 +74,13 @@ function WrenChatShell() {
         onRemovePendingAttachment={removePendingAttachment}
         onRemoveUploadedAttachment={removeUploadedAttachment}
       />
-    </>
+
+      {isMobile && hasPlanAssets && isPlanOpen && (
+        <div className="fixed inset-0 z-50 bg-background">
+          <PlanBuilderPanel planAssets={planAssets} onClose={() => setIsPlanOpen(false)} />
+        </div>
+      )}
+    </div>
   );
 }
 
