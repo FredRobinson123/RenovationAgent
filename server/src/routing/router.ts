@@ -4,6 +4,7 @@ import { agents } from '../mastra/agents/index.js';
 import type { LoggerLike } from '../types.js';
 import type { AuthenticatedUser } from '../services/auth-service.js';
 import { handleImageUploadRequest, handleUploadDeleteRequest } from './upload-handler.js';
+import type { PlanAssetRecord } from '../services/plan-asset-service.js';
 
 export type RouterDeps = {
   logger: LoggerLike;
@@ -15,9 +16,16 @@ export type RouterDeps = {
     res: ServerResponse,
     authUser: AuthenticatedUser
   ) => Promise<void>;
+  loadPlanAssetsBySession: (sessionId: string, userId: string) => Promise<PlanAssetRecord[]>;
 };
 
-export function createRequestHandler({ logger, defaultPort, authenticateRequest, handleAgentRunRequest }: RouterDeps) {
+export function createRequestHandler({
+  logger,
+  defaultPort,
+  authenticateRequest,
+  handleAgentRunRequest,
+  loadPlanAssetsBySession,
+}: RouterDeps) {
   const agentIds = Object.keys(agents);
 
   return async function requestHandler(req: IncomingMessage, res: ServerResponse) {
@@ -91,6 +99,30 @@ export function createRequestHandler({ logger, defaultPort, authenticateRequest,
         }
         await handleUploadDeleteRequest(uploadId, res, authUser, { logger });
         return;
+      }
+
+      if (req.method === 'GET') {
+        const planAssetsMatch = url.pathname.match(/^\/api\/plan\/([^/]+)\/assets$/);
+        if (planAssetsMatch) {
+          const sessionId = decodeURIComponent(planAssetsMatch[1]);
+          const authUser = await authenticateRequest(req, res);
+          if (!authUser) {
+            return;
+          }
+
+          try {
+            const assets = await loadPlanAssetsBySession(sessionId, authUser.userId);
+            sendJson(res, 200, { sessionId, assets });
+          } catch (error) {
+            logger.error('Failed to load plan assets', {
+              sessionId,
+              userId: authUser.userId,
+              err: error instanceof Error ? { message: error.message } : error,
+            });
+            sendJson(res, 500, { error: 'Unable to load renovation plan assets' });
+          }
+          return;
+        }
       }
 
       sendJson(res, 404, { error: 'Route not found' });

@@ -3,6 +3,7 @@ import { ChatInput } from "@features/chat/components/ChatInput";
 import { ChatHeader } from "@features/chat/components/ChatHeader";
 import { MessageList } from "@features/chat/components/MessageList";
 import { useChatSession } from "@features/chat/hooks/useChatSession";
+import { PlanBuilderPanel } from "@features/chat/components/PlanBuilderPanel";
 
 function WrenChatShell() {
   const {
@@ -16,12 +17,14 @@ function WrenChatShell() {
     addPendingAttachments,
     removePendingAttachment,
     removeUploadedAttachment,
+    planAssets,
   } = useChatSession();
 
   return (
     <>
       <div className="flex flex-col h-screen">
         <ChatHeader />
+        <PlanBuilderPanel planAssets={planAssets} />
         <MessageList messages={messages} isSending={isSending} messagesEndRef={messagesEndRef} />
       </div>
       <ChatInput

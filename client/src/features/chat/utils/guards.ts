@@ -1,4 +1,5 @@
 import type {
+  AgentSource,
   BudgetLineItem,
   BudgetSpreadsheet,
   ContractorRow,
@@ -201,5 +202,19 @@ export function isDesignInspirationGuidePayload(
     isDesignGuide(record.designGuide) &&
     (gallery === undefined || gallery === null || isDesignImageGallery(gallery))
   );
+}
+
+const agentSources: AgentSource[] = [
+  'assistant',
+  'lead-renovation-agent',
+  'design-inspiration-guide-agent',
+  'budget-agent',
+  'contractor-agent',
+  'timeline-agent',
+  'materials-agent',
+];
+
+export function isAgentSource(value: unknown): value is AgentSource {
+  return typeof value === 'string' && agentSources.includes(value as AgentSource);
 }
 

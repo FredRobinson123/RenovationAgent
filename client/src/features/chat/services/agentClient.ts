@@ -7,6 +7,7 @@ import type {
   DesignImageGallery,
   GanttChart,
   MaterialsSpreadsheet,
+  PlanAsset,
 } from "@features/chat/types";
 import {
   isBudgetSpreadsheet,
@@ -15,7 +16,9 @@ import {
   isDesignImageGallery,
   isGanttChart,
   isMaterialsSpreadsheet,
+  isAgentSource,
 } from "@features/chat/utils/guards";
+import { normalizePlanAssets } from "@features/chat/utils/planAssets";
 
 const LEAD_AGENT_SLUG = "lead-renovation-agent";
 const LOCALHOST_SERVER_URL = "http://localhost:5001";
@@ -79,6 +82,7 @@ export type AgentRunResult = {
   imageGallery?: DesignImageGallery;
   designGuide?: DesignGuide;
   selectedAgent?: AgentSource;
+  planAssets?: PlanAsset[];
 };
 
 export async function runLeadAgentConversation(
@@ -197,6 +201,7 @@ export async function runLeadAgentConversation(
     imageGallery: serverImageGallery ?? parsedAssistantMessage.imageGallery,
     designGuide: serverDesignGuide ?? parsedAssistantMessage.designGuide,
     selectedAgent,
+    planAssets: normalizePlanAssets(record.planAssets),
   };
 }
 
@@ -327,21 +332,6 @@ function pickSelectedAgent(container: Record<string, unknown> | undefined): Agen
   }
   const candidate = container.selectedAgent;
   return isAgentSource(candidate) ? candidate : undefined;
-}
-
-function isAgentSource(value: unknown): value is AgentSource {
-  if (typeof value !== "string") {
-    return false;
-  }
-  return [
-    "assistant",
-    "lead-renovation-agent",
-    "design-inspiration-guide-agent",
-    "budget-agent",
-    "contractor-agent",
-    "timeline-agent",
-    "materials-agent",
-  ].includes(value);
 }
 
 function createFallbackSessionId(): string {

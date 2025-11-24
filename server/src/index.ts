@@ -13,6 +13,7 @@ import { logger } from './utils/pino-logger.js';
 import { sendJson } from './http/http-utils.js';
 import { agents } from './mastra/agents/index.js';
 import { scheduleUploadCleanup } from './services/upload-cleanup.js';
+import { listPlanAssetsBySession } from './services/plan-asset-service.js';
 
 const authService = createAuthService({
   logger,
@@ -30,6 +31,7 @@ const requestHandler = createRequestHandler({
   defaultPort: serverConfig.port,
   authenticateRequest: authService.authenticateRequest,
   handleAgentRunRequest: agentRunner.handleAgentRunRequest,
+  loadPlanAssetsBySession: listPlanAssetsBySession,
 });
 
 logger.info('Server environment configuration', serverEnvironmentSummary);

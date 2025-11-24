@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
-import type { ChatMessage, CustomerImageUpload, PendingAttachment } from "@features/chat/types";
+import type { ChatMessage, CustomerImageUpload, PendingAttachment, PlanAsset } from "@features/chat/types";
 import { INITIAL_ASSISTANT_MESSAGE } from "@features/chat/constants";
 import { buildConversationHistory, createMessageId } from "@features/chat/utils/messages";
 import {
@@ -9,10 +9,12 @@ import {
   type AssistantUserContext,
 } from "@features/chat/services/agentClient";
 import { uploadImages, deleteUpload } from "@features/chat/services/uploadClient";
+import { fetchPlanAssets } from "@features/chat/services/planClient";
 import { useToast } from "@shared/hooks/use-toast";
 
 const MAX_ATTACHMENTS = 5;
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+const SESSION_STORAGE_KEY = "wren.chat.sessionId";
 
 type OptionalTokenOptions = { optional?: boolean };
 type OptionalTokenOnlyOptions = { optional: true };
@@ -66,6 +68,8 @@ export type UseChatSessionResult = {
   addPendingAttachments: (files: FileList | File[]) => Promise<void>;
   removePendingAttachment: (pendingId: string) => void;
   removeUploadedAttachment: (uploadId: string) => Promise<void>;
+  planAssets: PlanAsset[];
+  sessionId: string;
 };
 
 export function useChatSession(): UseChatSessionResult {
@@ -74,7 +78,8 @@ export function useChatSession(): UseChatSessionResult {
   const [uploadedAttachments, setUploadedAttachments] = useState<CustomerImageUpload[]>([]);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [isUploadingAttachments, setIsUploadingAttachments] = useState(false);
-  const [sessionId] = useState(() => createMessageId());
+  const [sessionId] = useState(() => initializeSessionId());
+  const [planAssets, setPlanAssets] = useState<PlanAsset[]>([]);
   const { getToken } = useAuth();
   const { user } = useUser();
   const { toast } = useToast();
@@ -96,6 +101,30 @@ export function useChatSession(): UseChatSessionResult {
       pendingAttachmentsRef.current.forEach((attachment) => URL.revokeObjectURL(attachment.previewUrl));
     };
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadPlanAssets = async () => {
+      try {
+        const token = await getClerkToken("load plan assets", { optional: true });
+        if (!token) {
+          return;
+        }
+        const assets = await fetchPlanAssets(sessionId, { token });
+        if (isMounted) {
+          setPlanAssets(sortPlanAssets(assets));
+        }
+      } catch (error) {
+        console.error("Failed to load plan assets", error);
+      }
+    };
+
+    loadPlanAssets();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [getClerkToken, sessionId]);
 
   const addPendingAttachments = useCallback(
     async (fileInput: FileList | File[]) => {
@@ -265,6 +294,7 @@ export function useChatSession(): UseChatSessionResult {
           imageGallery,
           designGuide,
           selectedAgent,
+          planAssets: newPlanAssets = [],
         } = await runLeadAgentConversation(
           trimmed,
           conversationHistory,
@@ -290,6 +320,9 @@ export function useChatSession(): UseChatSessionResult {
           designGuide,
         };
         setMessages((prev) => [...prev, assistantMessage]);
+        if (newPlanAssets.length) {
+          setPlanAssets((prev) => mergePlanAssets(prev, newPlanAssets));
+        }
       } catch (error) {
         console.error(error);
         const friendlyMessage = buildFriendlyErrorMessage(error);
@@ -329,6 +362,8 @@ export function useChatSession(): UseChatSessionResult {
     addPendingAttachments,
     removePendingAttachment,
     removeUploadedAttachment,
+    planAssets,
+    sessionId,
   };
 }
 
@@ -354,4 +389,44 @@ function createPendingAttachment(file: File): PendingAttachment {
 
 function revokePreviewUrl(attachment: PendingAttachment) {
   URL.revokeObjectURL(attachment.previewUrl);
+}
+
+function initializeSessionId(): string {
+  if (typeof window === "undefined") {
+    return createMessageId();
+  }
+
+  const stored = window.localStorage.getItem(SESSION_STORAGE_KEY);
+  if (stored && stored.trim().length > 0) {
+    return stored;
+  }
+
+  const nextSessionId = createMessageId();
+  try {
+    window.localStorage.setItem(SESSION_STORAGE_KEY, nextSessionId);
+  } catch {
+    // Ignore storage failures; we'll use the generated session ID for this run.
+  }
+  return nextSessionId;
+}
+
+function mergePlanAssets(existing: PlanAsset[], incoming: PlanAsset[]): PlanAsset[] {
+  if (!incoming.length) {
+    return existing;
+  }
+
+  const map = new Map(existing.map((asset) => [asset.id, asset]));
+  for (const asset of incoming) {
+    map.set(asset.id, asset);
+  }
+
+  return sortPlanAssets(Array.from(map.values()));
+}
+
+function sortPlanAssets(assets: PlanAsset[]): PlanAsset[] {
+  return [...assets].sort((a, b) => {
+    const aTime = Date.parse(a.createdAt);
+    const bTime = Date.parse(b.createdAt);
+    return bTime - aTime;
+  });
 }

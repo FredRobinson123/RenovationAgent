@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { z } from 'zod';
 import { readJsonBody, sendJson } from '../http/http-utils.js';
-import type { LoggerLike } from '../types.js';
+import type { JsonRecord, LoggerLike } from '../types.js';
 import type { AuthenticatedUser } from './auth-service.js';
 import { agents } from '../mastra/agents/index.js';
 import { buildConversationAwareMessage } from '../mastra/agents/context-helpers.js';
@@ -14,6 +14,11 @@ import {
   parseTimelineAgentReply,
 } from '../mastra/agents/structured-parsers.js';
 import type { DesignInspirationGuideAgentReply } from '../mastra/agents/shared-schemas.js';
+import {
+  savePlanAssets,
+  type InsertPlanAssetInput,
+  type PlanAssetRecord,
+} from './plan-asset-service.js';
 
 const AgentRunInputSchema = z.object({
   latestCustomerMessage: z.string().min(1, 'latestCustomerMessage is required'),
@@ -27,6 +32,7 @@ type AgentRunInput = z.infer<typeof AgentRunInputSchema>;
 type AgentRunnerDeps = {
   logger: LoggerLike;
   registry?: AgentRegistry;
+  persistPlanAssets?: typeof savePlanAssets;
 };
 
 type AgentRegistry = typeof agents;
@@ -125,7 +131,102 @@ function parseStructuredArtifactsFromFinalResponse(finalResponse: string): SubAg
   return artifacts;
 }
 
-export function createAgentRunner({ logger, registry = agents }: AgentRunnerDeps) {
+type BuildPlanAssetsInput = {
+  sessionId: string;
+  userId: string;
+  artifacts: SubAgentArtifacts;
+};
+
+function buildPlanAssetInputs({ sessionId, userId, artifacts }: BuildPlanAssetsInput): InsertPlanAssetInput[] {
+  const assets: InsertPlanAssetInput[] = [];
+
+  const pushAsset = (asset: Omit<InsertPlanAssetInput, 'sessionId' | 'userId'>) => {
+    assets.push({
+      sessionId,
+      userId,
+      ...asset,
+    });
+  };
+
+  const budgetSheet = artifacts.budget?.spreadsheet;
+  if (budgetSheet) {
+    pushAsset({
+      assetType: 'budget',
+      title: budgetSheet.projectName || 'Renovation budget',
+      summary: safeSummary(artifacts.budget?.messageForCustomer),
+      data: budgetSheet as JsonRecord,
+      sourceAgent: 'budget-agent',
+    });
+  }
+
+  const contractorSheet = artifacts.contractor?.spreadsheet;
+  if (contractorSheet) {
+    pushAsset({
+      assetType: 'contractor',
+      title: contractorSheet.projectName || 'Contractor sourcing list',
+      summary: safeSummary(artifacts.contractor?.messageForCustomer),
+      data: contractorSheet as JsonRecord,
+      sourceAgent: 'contractor-agent',
+    });
+  }
+
+  const materialsSheet = artifacts.materials?.spreadsheet;
+  if (materialsSheet) {
+    pushAsset({
+      assetType: 'materials',
+      title: materialsSheet.projectName || 'Materials plan',
+      summary: safeSummary(artifacts.materials?.messageForCustomer),
+      data: materialsSheet as JsonRecord,
+      sourceAgent: 'materials-agent',
+    });
+  }
+
+  const ganttChart = artifacts.timeline?.ganttChart;
+  if (ganttChart && ganttChart.tasks.length > 0) {
+    pushAsset({
+      assetType: 'timeline',
+      title: ganttChart.projectName || 'Project timeline',
+      summary: safeSummary(artifacts.timeline?.messageForCustomer),
+      data: ganttChart as JsonRecord,
+      sourceAgent: 'timeline-agent',
+    });
+  }
+
+  const designGuide = artifacts.design?.designGuide;
+  if (designGuide) {
+    pushAsset({
+      assetType: 'design-guide',
+      title: designGuide.styleLabel || 'Design guide',
+      summary: safeSummary(designGuide.longFormGuidance),
+      data: designGuide as JsonRecord,
+      sourceAgent: 'design-inspiration-guide-agent',
+    });
+  }
+
+  const imageGallery = artifacts.design?.imageGallery;
+  if (imageGallery) {
+    pushAsset({
+      assetType: 'image-gallery',
+      title: imageGallery.query || 'Inspiration gallery',
+      summary: safeSummary(imageGallery.summary),
+      data: imageGallery as JsonRecord,
+      sourceAgent: 'design-inspiration-guide-agent',
+    });
+  }
+
+  return assets;
+}
+
+function safeSummary(value?: string | null): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : undefined;
+}
+
+export function createAgentRunner({
+  logger,
+  registry = agents,
+  persistPlanAssets = savePlanAssets,
+}: AgentRunnerDeps) {
   const agentRegistryBySlug = buildAgentRegistry(registry);
 
   async function handleAgentRunRequest(
@@ -194,6 +295,24 @@ export function createAgentRunner({ logger, registry = agents }: AgentRunnerDeps
           ? runContext.artifacts
           : parseStructuredArtifactsFromFinalResponse(finalResponse);
 
+      const planAssetInputs = buildPlanAssetInputs({
+        sessionId: input.sessionId,
+        userId: authUser.userId,
+        artifacts: mergedArtifacts,
+      });
+
+      let persistedPlanAssets: PlanAssetRecord[] = [];
+      if (planAssetInputs.length) {
+        try {
+          persistedPlanAssets = await persistPlanAssets(planAssetInputs);
+        } catch (persistError) {
+          logger.warn('Failed to persist plan assets', {
+            agentSlug: slug,
+            err: persistError instanceof Error ? { message: persistError.message } : persistError,
+          });
+        }
+      }
+
       const payload = {
         finalResponse,
         selectedAgent: slug,
@@ -203,6 +322,7 @@ export function createAgentRunner({ logger, registry = agents }: AgentRunnerDeps
         ganttChart: mergedArtifacts.timeline?.ganttChart ?? undefined,
         imageGallery: mergedArtifacts.design?.imageGallery ?? undefined,
         designGuide: mergedArtifacts.design?.designGuide ?? undefined,
+        planAssets: persistedPlanAssets,
       };
 
       logger.info('Agent run finished', {

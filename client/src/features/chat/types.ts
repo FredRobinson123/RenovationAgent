@@ -133,3 +133,93 @@ export interface DesignInspirationGuidePayload {
   imageGallery?: DesignImageGallery | null;
 }
 
+export type PlanAssetType =
+  | 'budget'
+  | 'contractor'
+  | 'materials'
+  | 'timeline'
+  | 'design-guide'
+  | 'image-gallery';
+
+interface BasePlanAsset {
+  id: string;
+  sessionId: string;
+  userId: string;
+  assetType: PlanAssetType;
+  title: string;
+  summary?: string | null;
+  sourceAgent: AgentSource;
+  createdAt: string;
+}
+
+export type BudgetPlanAsset = BasePlanAsset & {
+  assetType: 'budget';
+  data: BudgetSpreadsheet;
+};
+
+export type ContractorPlanAsset = BasePlanAsset & {
+  assetType: 'contractor';
+  data: ContractorSpreadsheet;
+};
+
+export type MaterialsPlanAsset = BasePlanAsset & {
+  assetType: 'materials';
+  data: MaterialsSpreadsheet;
+};
+
+export type TimelinePlanAsset = BasePlanAsset & {
+  assetType: 'timeline';
+  data: GanttChart;
+};
+
+export type DesignGuidePlanAsset = BasePlanAsset & {
+  assetType: 'design-guide';
+  data: DesignGuide;
+};
+
+export type GalleryPlanAsset = BasePlanAsset & {
+  assetType: 'image-gallery';
+  data: DesignImageGallery;
+};
+
+export type PlanAsset =
+  | BudgetPlanAsset
+  | ContractorPlanAsset
+  | MaterialsPlanAsset
+  | TimelinePlanAsset
+  | DesignGuidePlanAsset
+  | GalleryPlanAsset;
+
+export type PlanAssetGroup = {
+  assetType: PlanAssetType;
+  label: string;
+  assets: PlanAsset[];
+};
+
+export type PlanAssetType = 'budget' | 'contractor' | 'materials' | 'timeline' | 'design' | 'gallery';
+
+type BasePlanAsset<TType extends PlanAssetType, TData> = {
+  id: string;
+  sessionId: string;
+  assetType: TType;
+  title: string;
+  summary?: string;
+  data: TData;
+  sourceAgent?: AgentSource;
+  createdAt: string;
+};
+
+export type PlanAsset =
+  | BasePlanAsset<'budget', BudgetSpreadsheet>
+  | BasePlanAsset<'contractor', ContractorSpreadsheet>
+  | BasePlanAsset<'materials', MaterialsSpreadsheet>
+  | BasePlanAsset<'timeline', GanttChart>
+  | BasePlanAsset<'design', DesignGuide>
+  | BasePlanAsset<'gallery', DesignImageGallery>;
+
+export type PlanAssetGroup = {
+  type: PlanAssetType;
+  title: string;
+  assets: PlanAsset[];
+};
+

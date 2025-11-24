@@ -1,3 +1,4 @@
+import './test-env.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Readable } from 'node:stream';
@@ -134,5 +135,72 @@ test('handleAgentRunRequest returns agent text and structured payloads', async (
   const spreadsheet = payload.budgetSpreadsheet as Record<string, unknown>;
   assert.equal(spreadsheet.projectName, 'Test Project');
   assert.equal(payload.selectedAgent, 'test-agent');
+});
+
+test('handleAgentRunRequest persists plan assets and returns them', async () => {
+  const structuredPayload = {
+    messageForCustomer: 'Budget ready',
+    spreadsheet: {
+      projectName: 'Villa Refresh',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      totalBudget: 25000,
+      contingencyAmount: 2500,
+      total: 22500,
+      lineItems: [
+        {
+          category: 'Demo',
+          description: 'Remove walls',
+          cost: 5000,
+        },
+      ],
+    },
+  };
+
+  const stubAgent = {
+    generate: async () => ({
+      text: `\`\`\`json\n${JSON.stringify(structuredPayload)}\n\`\`\``,
+    }),
+  };
+
+  let recordedInputs: unknown[] | undefined;
+  const runner = createAgentRunner({
+    logger: loggerStub,
+    registry: { testAgent: stubAgent } as any,
+    persistPlanAssets: async (inputs) => {
+      recordedInputs = inputs;
+      return inputs.map((input, index) => ({
+        id: `asset_${index}`,
+        sessionId: input.sessionId,
+        userId: input.userId,
+        assetType: input.assetType,
+        title: input.title,
+        summary: input.summary ?? null,
+        data: input.data,
+        sourceAgent: input.sourceAgent,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      }));
+    },
+  });
+
+  const { res, getResult } = createResponseRecorder();
+  const req = createRequest({
+    inputData: {
+      latestCustomerMessage: 'Plan my budget',
+      conversationHistory: 'Customer planning a kitchen',
+      sessionId: 'session_budget',
+    },
+  });
+
+  await runner.handleAgentRunRequest('test-agent', req, res, { userId: 'user_123' });
+
+  const result = getResult();
+  assert.equal(result.statusCode, 200);
+  const payload = JSON.parse(result.body) as Record<string, unknown>;
+  const planAssets = payload.planAssets as Array<Record<string, unknown>>;
+  assert.ok(Array.isArray(planAssets));
+  assert.equal(planAssets.length, 1);
+  assert.equal(planAssets[0].id, 'asset_0');
+  assert.equal(planAssets[0].assetType, 'budget');
+  assert.equal((recordedInputs?.[0] as Record<string, unknown>).assetType, 'budget');
 });
 
