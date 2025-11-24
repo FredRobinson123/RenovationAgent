@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SignedIn, SignedOut, SignIn } from "@clerk/clerk-react";
 import { SquarePen } from "lucide-react";
 import { ChatInput } from "@features/chat/components/ChatInput";
@@ -6,12 +6,22 @@ import { ChatHeader } from "@features/chat/components/ChatHeader";
 import { MessageList } from "@features/chat/components/MessageList";
 import { useChatSession } from "@features/chat/hooks/useChatSession";
 import { PlanBuilderPanel } from "@features/chat/components/PlanBuilderPanel";
-import { PlanBuilderFloatingButton, PlanBuilderWidget } from "@features/chat/components/PlanBuilderWidget";
+import { PlanBuilderNavButton } from "@features/chat/components/PlanBuilderWidget";
 import { useIsMobile } from "@shared/hooks/use-mobile";
 import { FloatingNavButtons } from "@/components/FloatingNavButtons";
 import { resetChatSession } from "@features/chat/utils/session";
 
-function WrenChatShell() {
+type PlanNavButtonState = {
+  isVisible: boolean;
+  hasUpdates: boolean;
+  onOpen?: () => void;
+};
+
+type WrenChatShellProps = {
+  onPlanButtonStateChange: (state: PlanNavButtonState) => void;
+};
+
+function WrenChatShell({ onPlanButtonStateChange }: WrenChatShellProps) {
   const {
     messages,
     isSending,
@@ -41,8 +51,6 @@ function WrenChatShell() {
   }, [hasPlanAssets]);
 
   const showDesktopPanel = hasPlanAssets && !isMobile && isPlanOpen;
-  const shouldShowDesktopPlanWidget = hasPlanAssets && !isPlanOpen && !isMobile;
-  const shouldShowMobilePlanWidget = hasPlanAssets && !isPlanOpen && isMobile;
 
   useEffect(() => {
     const previousIds = planAssetIdsRef.current;
@@ -63,38 +71,42 @@ function WrenChatShell() {
     }
   }, [isPlanOpen]);
 
-  const handleOpenPlan = () => {
+  const handleOpenPlan = useCallback(() => {
     setIsPlanOpen(true);
-  };
+  }, []);
 
-  const handleClosePlan = () => {
+  const handleClosePlan = useCallback(() => {
     setIsPlanOpen(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    onPlanButtonStateChange({
+      isVisible: hasPlanAssets,
+      hasUpdates: hasPendingPlanUpdate && !isPlanOpen,
+      onOpen: hasPlanAssets ? handleOpenPlan : undefined,
+    });
+  }, [handleOpenPlan, hasPendingPlanUpdate, hasPlanAssets, isPlanOpen, onPlanButtonStateChange]);
+
+  useEffect(() => {
+    return () => {
+      onPlanButtonStateChange({ isVisible: false, hasUpdates: false, onOpen: undefined });
+    };
+  }, [onPlanButtonStateChange]);
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <ChatHeader />
       <div className="flex flex-1 overflow-hidden">
-        <div className={`flex flex-col h-full min-h-0 flex-1 ${showDesktopPanel ? "md:w-1/2" : ""}`}>
+        <div className={`flex flex-col h-full ${showDesktopPanel ? "md:w-1/2" : "w-full"}`}>
           <div className="flex-1 overflow-hidden min-h-0">
             <MessageList messages={messages} isSending={isSending} messagesEndRef={messagesEndRef} />
           </div>
         </div>
 
-        {showDesktopPanel ? (
+        {showDesktopPanel && (
           <div className="hidden md:flex md:w-1/2 border-l border-border bg-muted/10 h-full overflow-hidden min-h-0">
             <PlanBuilderPanel planAssets={planAssets} onClose={handleClosePlan} ref={planPanelRef} />
           </div>
-        ) : (
-          shouldShowDesktopPlanWidget && (
-            <aside className="hidden md:flex md:w-72 lg:w-80 flex-shrink-0 border-l border-border/80 bg-muted/30 px-6 py-8">
-              <PlanBuilderWidget
-                onOpen={handleOpenPlan}
-                hasUpdates={hasPendingPlanUpdate}
-                className="w-full bg-background"
-              />
-            </aside>
-          )
         )}
       </div>
       <ChatInput
@@ -107,21 +119,22 @@ function WrenChatShell() {
         onRemovePendingAttachment={removePendingAttachment}
         onRemoveUploadedAttachment={removeUploadedAttachment}
       />
-
       {isMobile && hasPlanAssets && isPlanOpen && (
         <div className="fixed inset-0 z-50 bg-background">
           <PlanBuilderPanel planAssets={planAssets} onClose={handleClosePlan} ref={planPanelRef} />
         </div>
-      )}
-
-      {shouldShowMobilePlanWidget && (
-        <PlanBuilderFloatingButton onOpen={handleOpenPlan} hasUpdates={hasPendingPlanUpdate} />
       )}
     </div>
   );
 }
 
 export default function WrenPage() {
+  const [planNavButtonState, setPlanNavButtonState] = useState<PlanNavButtonState>({
+    isVisible: false,
+    hasUpdates: false,
+    onOpen: undefined,
+  });
+
   const handleStartNewChat = () => {
     resetChatSession();
     if (typeof window !== "undefined") {
@@ -129,40 +142,65 @@ export default function WrenPage() {
     }
   };
 
+  const handlePlanButtonStateChange = useCallback((state: PlanNavButtonState) => {
+    setPlanNavButtonState(state);
+  }, []);
+
+  const renderPlanNavButton =
+    planNavButtonState.isVisible && planNavButtonState.onOpen ? (
+      <PlanBuilderNavButton onOpen={planNavButtonState.onOpen} hasUpdates={planNavButtonState.hasUpdates} />
+    ) : null;
+
   return (
     <div className="relative min-h-screen bg-background text-foreground">
-      <FloatingNavButtons
-        primaryLabel="Home"
-        primaryHref="/"
-        actions={[
-          {
-            icon: SquarePen,
-            label: "Start a new chat with Wren",
-            onClick: handleStartNewChat,
-          },
-        ]}
-      />
-
       <SignedIn>
-        <WrenChatShell />
+        <>
+          <FloatingNavButtons
+            primaryLabel="Home"
+            primaryHref="/"
+            actions={[
+              {
+                icon: SquarePen,
+                label: "Start a new chat with Wren",
+                onClick: handleStartNewChat,
+              },
+            ]}
+          >
+            {renderPlanNavButton}
+          </FloatingNavButtons>
+          <WrenChatShell onPlanButtonStateChange={handlePlanButtonStateChange} />
+        </>
       </SignedIn>
 
       <SignedOut>
-        <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center space-y-6">
-          <div className="space-y-3">
-            <h1 className="text-[3.375rem] font-semibold text-foreground font-ren tracking-[0.15em]">
-              Hey, I'm Wren 👋
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-xl">
-              Sign in to continue your renovation planning with Wren.
-            </p>
-          </div>
-          <SignIn
-            appearance={{ elements: { formButtonPrimary: "bg-primary" } }}
-            afterSignInUrl="/wren"
-            afterSignUpUrl="/wren"
+        <>
+          <FloatingNavButtons
+            primaryLabel="Home"
+            primaryHref="/"
+            actions={[
+              {
+                icon: SquarePen,
+                label: "Start a new chat with Wren",
+                onClick: handleStartNewChat,
+              },
+            ]}
           />
-        </div>
+          <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center space-y-6">
+            <div className="space-y-3">
+              <h1 className="text-[3.375rem] font-semibold text-foreground font-ren tracking-[0.15em]">
+                Hey, I'm Wren 👋
+              </h1>
+              <p className="text-lg text-muted-foreground max-w-xl">
+                Sign in to continue your renovation planning with Wren.
+              </p>
+            </div>
+            <SignIn
+              appearance={{ elements: { formButtonPrimary: "bg-primary" } }}
+              afterSignInUrl="/wren"
+              afterSignUpUrl="/wren"
+            />
+          </div>
+        </>
       </SignedOut>
     </div>
   );

@@ -1,4 +1,4 @@
-import { type ComponentType } from "react";
+import { type ComponentType, type ReactNode } from "react";
 import { Link } from "wouter";
 import { cn } from "@/shared/lib/utils";
 
@@ -13,9 +13,10 @@ type FloatingNavButtonsProps = {
   primaryHref: string;
   actions?: FloatingNavAction[];
   className?: string;
+  children?: ReactNode;
 };
 
-export function FloatingNavButtons({ primaryLabel, primaryHref, actions, className }: FloatingNavButtonsProps) {
+export function FloatingNavButtons({ primaryLabel, primaryHref, actions, className, children }: FloatingNavButtonsProps) {
   return (
     <div className={cn("fixed top-6 left-4 z-50 flex flex-col items-start gap-3", className)}>
       <Link
@@ -36,6 +37,8 @@ export function FloatingNavButtons({ primaryLabel, primaryHref, actions, classNa
           <action.icon className="h-4 w-4" />
         </button>
       ))}
+
+      {children}
     </div>
   );
 }
