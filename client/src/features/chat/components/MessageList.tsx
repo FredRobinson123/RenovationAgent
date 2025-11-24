@@ -12,13 +12,19 @@ type MessageListProps = {
 };
 
 export function MessageList({ messages, isSending, messagesEndRef, footerSlot }: MessageListProps) {
+  const bottomPaddingClass = footerSlot
+    ? "pb-[22rem] sm:pb-[26rem]"
+    : isSending
+      ? "pb-40 sm:pb-48"
+      : "pb-32";
+
   return (
     <div
       className={cn(
         "flex-1 overflow-y-auto px-4",
-        // Give extra space at the bottom while Wren is thinking so the
-        // loading indicator isn't obscured by the fixed chat input.
-        isSending ? "pb-40 sm:pb-48" : "pb-32"
+        // Give extra space at the bottom for the plan widget and while Wren
+        // is thinking so the loading indicator isn't obscured by the fixed input.
+        bottomPaddingClass
       )}
     >
       <div className="max-w-3xl mx-auto space-y-6">
@@ -27,6 +33,7 @@ export function MessageList({ messages, isSending, messagesEndRef, footerSlot }:
         ))}
 
         {footerSlot}
+        {footerSlot && <div className="h-20 sm:h-32" aria-hidden="true" />}
 
         {isSending && <ThinkingIndicator />}
 
