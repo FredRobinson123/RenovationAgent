@@ -193,6 +193,23 @@ type AgentLike = {
   generate: (messages: MessageListInput) => Promise<{ text?: string } & Record<string, unknown>>;
 };
 
+async function loadUploadsForTurn(
+  uploadedImageIds: string[] | undefined,
+  userId: string | undefined,
+  logLabel: string
+): Promise<ChatImageUploadWithUrl[]> {
+  if (!uploadedImageIds?.length || !userId) {
+    return [];
+  }
+
+  try {
+    return await getUploadsWithSignedUrls(uploadedImageIds, userId);
+  } catch (error) {
+    console.warn(`Failed to load uploads for ${logLabel}`, error);
+    return [];
+  }
+}
+
 function buildConversationAwareMessage({
   latestCustomerMessage,
   conversationHistory,
@@ -212,23 +229,45 @@ function buildConversationAwareMessage({
   ];
 }
 
+async function buildAgentUserMessageForTurn(
+  inputData: OrchestrationStepOutput,
+  logLabel: string
+): Promise<MessageListInput> {
+  const { latestCustomerMessage, conversationHistory, uploadedImageIds, userId } = inputData;
+
+  const uploads = await loadUploadsForTurn(uploadedImageIds, userId, logLabel);
+  if (uploads.length) {
+    console.info('Building multimodal agent message for turn with uploads', {
+      logLabel,
+      uploadCount: uploads.length,
+    });
+
+    return buildDesignGuideUserMessage({
+      latestCustomerMessage,
+      conversationHistory,
+      uploads,
+    });
+  }
+
+  return buildConversationAwareMessage({
+    latestCustomerMessage,
+    conversationHistory,
+  });
+}
+
 const createConversationAgentInvoker =
-  (agent: AgentLike) => (inputData: OrchestrationStepOutput) => {
-    const message = buildConversationAwareMessage(inputData);
+  (agent: AgentLike) => async (inputData: OrchestrationStepOutput) => {
+    // All agent turns share a common pattern:
+    // - Latest customer message and optional conversation history
+    // - Any uploads from THIS turn only, converted into multimodal content
+    const message = await buildAgentUserMessageForTurn(inputData, 'agent invocation');
     return agent.generate(message);
   };
 
 async function invokeDesignInspirationGuideAgent(inputData: OrchestrationStepOutput) {
   const { latestCustomerMessage, conversationHistory, uploadedImageIds, userId } = inputData;
 
-  let uploads: ChatImageUploadWithUrl[] = [];
-  if (uploadedImageIds?.length && userId) {
-    try {
-      uploads = await getUploadsWithSignedUrls(uploadedImageIds, userId);
-    } catch (error) {
-      console.warn('Failed to load uploads for design inspiration guide agent', error);
-    }
-  }
+  const uploads = await loadUploadsForTurn(uploadedImageIds, userId, 'design inspiration guide agent');
 
   const agentMessage = buildDesignGuideUserMessage({
     latestCustomerMessage,
