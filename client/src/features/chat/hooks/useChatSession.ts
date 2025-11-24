@@ -12,6 +12,7 @@ import { uploadImages, deleteUpload } from "@features/chat/services/uploadClient
 import { fetchPlanAssets } from "@features/chat/services/planClient";
 import { useToast } from "@shared/hooks/use-toast";
 import { initializeChatSessionId } from "@features/chat/utils/session";
+import { selectImageIdsForAgentRun } from "@features/chat/utils/attachments";
 
 const MAX_ATTACHMENTS = 5;
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
@@ -269,7 +270,8 @@ export function useChatSession(): UseChatSessionResult {
         attachments: attachmentSnapshot,
       };
 
-      const conversationHistory = buildConversationHistory([...messages, userMessage]);
+      const updatedMessages = [...messages, userMessage];
+      const conversationHistory = buildConversationHistory(updatedMessages);
       setMessages((prev) => [...prev, userMessage]);
       setIsSending(true);
 
@@ -283,7 +285,7 @@ export function useChatSession(): UseChatSessionResult {
             }
           : undefined;
 
-        const uploadedImageIds = attachmentSnapshot.map((attachment) => attachment.id);
+        const uploadedImageIds = selectImageIdsForAgentRun(updatedMessages, attachmentSnapshot);
 
         const {
           finalResponse,
