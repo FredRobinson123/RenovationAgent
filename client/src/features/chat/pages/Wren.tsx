@@ -10,7 +10,6 @@ import { PlanBuilderWidget } from "@features/chat/components/PlanBuilderWidget";
 import { useIsMobile } from "@shared/hooks/use-mobile";
 import { FloatingNavButtons } from "@/components/FloatingNavButtons";
 import { resetChatSession } from "@features/chat/utils/session";
-import { Button } from "@/components/button";
 
 function WrenChatShell() {
   const {
@@ -29,45 +28,45 @@ function WrenChatShell() {
   const isMobile = useIsMobile();
   const hasPlanAssets = planAssets.length > 0;
   const [isPlanOpen, setIsPlanOpen] = useState(false);
-  const [hasAutoOpened, setHasAutoOpened] = useState(false);
   const [hasPendingPlanUpdate, setHasPendingPlanUpdate] = useState(false);
   const planAssetIdsRef = useRef<Set<string>>(new Set());
+  const planPanelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!hasPlanAssets) {
       setIsPlanOpen(false);
-      setHasAutoOpened(false);
       setHasPendingPlanUpdate(false);
       planAssetIdsRef.current = new Set();
     }
   }, [hasPlanAssets]);
 
-  useEffect(() => {
-    if (hasPlanAssets && !hasAutoOpened) {
-      setHasAutoOpened(true);
-    }
-  }, [hasPlanAssets, hasAutoOpened]);
-
   const showDesktopPanel = hasPlanAssets && !isMobile && isPlanOpen;
-  const shouldSurfacePlanWidget = hasPendingPlanUpdate && !isPlanOpen;
 
   useEffect(() => {
     const previousIds = planAssetIdsRef.current;
     const nextIds = new Set(planAssets.map((asset) => asset.id));
     const gainedNewAssets = planAssets.some((asset) => !previousIds.has(asset.id));
 
-    if (!planAssets.length) {
-      setHasPendingPlanUpdate(false);
-    } else if (gainedNewAssets && !isPlanOpen) {
+    if (gainedNewAssets && planAssets.length) {
       setHasPendingPlanUpdate(true);
     }
 
     planAssetIdsRef.current = nextIds;
-  }, [planAssets, isPlanOpen]);
+  }, [planAssets]);
+
+  useEffect(() => {
+    if (isPlanOpen) {
+      planPanelRef.current?.scrollTo({ top: 0 });
+      setHasPendingPlanUpdate(false);
+    }
+  }, [isPlanOpen]);
 
   const handleOpenPlan = () => {
     setIsPlanOpen(true);
-    setHasPendingPlanUpdate(false);
+  };
+
+  const handleClosePlan = () => {
+    setIsPlanOpen(false);
   };
 
   return (
@@ -81,8 +80,8 @@ function WrenChatShell() {
               isSending={isSending}
               messagesEndRef={messagesEndRef}
               footerSlot={
-                shouldSurfacePlanWidget ? (
-                  <PlanBuilderWidget compact={false} onOpen={handleOpenPlan} />
+                hasPlanAssets ? (
+                  <PlanBuilderWidget onOpen={handleOpenPlan} hasUpdates={hasPendingPlanUpdate && !isPlanOpen} />
                 ) : undefined
               }
             />
@@ -90,22 +89,11 @@ function WrenChatShell() {
         </div>
 
         {showDesktopPanel && (
-          <div className="hidden md:flex md:w-1/2 border-l border-border bg-muted/10">
-            <PlanBuilderPanel planAssets={planAssets} onClose={() => setIsPlanOpen(false)} />
+          <div className="hidden md:flex md:w-1/2 border-l border-border bg-muted/10 h-full overflow-hidden">
+            <PlanBuilderPanel planAssets={planAssets} onClose={handleClosePlan} ref={planPanelRef} />
           </div>
         )}
       </div>
-      {hasPlanAssets && (
-        <Button
-          type="button"
-          variant="secondary"
-          className="fixed right-4 bottom-[7.5rem] z-50 rounded-full shadow-lg sm:right-8"
-          onClick={handleOpenPlan}
-        >
-          View plan
-          {hasPendingPlanUpdate && <span className="ml-2 h-2 w-2 rounded-full bg-primary animate-pulse" aria-hidden="true" />}
-        </Button>
-      )}
       <ChatInput
         onSendMessage={sendMessage}
         disabled={isSending}
@@ -119,7 +107,7 @@ function WrenChatShell() {
 
       {isMobile && hasPlanAssets && isPlanOpen && (
         <div className="fixed inset-0 z-50 bg-background">
-          <PlanBuilderPanel planAssets={planAssets} onClose={() => setIsPlanOpen(false)} />
+          <PlanBuilderPanel planAssets={planAssets} onClose={handleClosePlan} ref={planPanelRef} />
         </div>
       )}
     </div>

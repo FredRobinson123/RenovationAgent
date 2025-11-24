@@ -97,6 +97,17 @@ export function useChatSession(): UseChatSessionResult {
     pendingAttachmentsRef.current = pendingAttachments;
   }, [pendingAttachments]);
 
+  const updatePendingAttachmentsState = useCallback(
+    (updater: (prev: PendingAttachment[]) => PendingAttachment[]) => {
+      setPendingAttachments((prev) => {
+        const next = updater(prev);
+        pendingAttachmentsRef.current = next;
+        return next;
+      });
+    },
+    []
+  );
+
   useEffect(() => {
     return () => {
       pendingAttachmentsRef.current.forEach((attachment) => URL.revokeObjectURL(attachment.previewUrl));
@@ -171,20 +182,20 @@ export function useChatSession(): UseChatSessionResult {
       }
 
       const newPending = filesToQueue.map((file) => createPendingAttachment(file));
-      setPendingAttachments((prev) => [...prev, ...newPending]);
+      updatePendingAttachmentsState((prev) => [...prev, ...newPending]);
     },
-    [isUploadingAttachments, pendingAttachments.length, toast, uploadedAttachments.length]
+    [isUploadingAttachments, pendingAttachments.length, toast, updatePendingAttachmentsState, uploadedAttachments.length]
   );
 
   const removePendingAttachment = useCallback((pendingId: string) => {
-    setPendingAttachments((prev) => {
+    updatePendingAttachmentsState((prev) => {
       const target = prev.find((attachment) => attachment.id === pendingId);
       if (target) {
         revokePreviewUrl(target);
       }
       return prev.filter((attachment) => attachment.id !== pendingId);
     });
-  }, []);
+  }, [updatePendingAttachmentsState]);
 
   const removeUploadedAttachment = useCallback(
     async (uploadId: string) => {
@@ -214,17 +225,18 @@ export function useChatSession(): UseChatSessionResult {
   );
 
   const uploadPendingAttachments = useCallback(async (): Promise<CustomerImageUpload[]> => {
-    if (!pendingAttachments.length) {
+    const currentPending = pendingAttachmentsRef.current;
+    if (!currentPending.length) {
       return uploadedAttachments;
     }
 
     setIsUploadingAttachments(true);
     try {
       const token = await getClerkToken("image uploads");
-      const filesToUpload = pendingAttachments.map((attachment) => attachment.file);
+      const filesToUpload = currentPending.map((attachment) => attachment.file);
       const uploaded = await uploadImages(filesToUpload, { sessionId, token });
-      pendingAttachments.forEach((attachment) => revokePreviewUrl(attachment));
-      setPendingAttachments([]);
+      currentPending.forEach((attachment) => revokePreviewUrl(attachment));
+      updatePendingAttachmentsState(() => []);
 
       let combined: CustomerImageUpload[] = [];
       setUploadedAttachments((prev) => {
@@ -244,7 +256,7 @@ export function useChatSession(): UseChatSessionResult {
     } finally {
       setIsUploadingAttachments(false);
     }
-  }, [getClerkToken, pendingAttachments, sessionId, toast, uploadedAttachments]);
+  }, [getClerkToken, sessionId, toast, updatePendingAttachmentsState, uploadedAttachments]);
 
   const sendMessage = useCallback(
     async (content: string) => {

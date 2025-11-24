@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { forwardRef, useMemo } from "react";
 import { CalendarClock, Images, ShoppingBag, Users, Wallet, X } from "lucide-react";
 import { Badge } from "@/components/badge";
 import { Button } from "@/components/button";
@@ -55,7 +55,10 @@ const PLAN_SECTION_METADATA: Record<PlanAssetType, GroupMeta> = {
 
 const GROUP_RENDER_ORDER: PlanAssetType[] = ["budget", "contractor", "materials", "timeline", "image-gallery"];
 
-export function PlanBuilderPanel({ planAssets, onClose }: PlanBuilderPanelProps) {
+export const PlanBuilderPanel = forwardRef<HTMLDivElement, PlanBuilderPanelProps>(function PlanBuilderPanel(
+  { planAssets, onClose },
+  ref
+) {
   if (!planAssets.length) {
     return null;
   }
@@ -63,7 +66,10 @@ export function PlanBuilderPanel({ planAssets, onClose }: PlanBuilderPanelProps)
   const groupedAssets = useMemo(() => buildPlanGroups(planAssets), [planAssets]);
 
   return (
-    <section className="h-full overflow-y-auto bg-muted/20 px-4 py-4">
+    <section
+      ref={ref}
+      className="h-full overflow-y-auto bg-muted/20 px-4 pt-4 pb-40 sm:pb-48"
+    >
       <div className="flex items-start justify-between gap-4 pb-3">
         <h2 className="text-2xl font-semibold tracking-tight text-foreground">Your renovation plan</h2>
         {onClose && (
@@ -86,7 +92,7 @@ export function PlanBuilderPanel({ planAssets, onClose }: PlanBuilderPanelProps)
       </div>
     </section>
   );
-}
+});
 
 type PlanAssetGroupSectionProps = {
   group: PlanAssetGroup;
