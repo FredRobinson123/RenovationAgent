@@ -195,31 +195,3 @@ export type PlanAssetGroup = {
   label: string;
   assets: PlanAsset[];
 };
-
-export type PlanAssetType = 'budget' | 'contractor' | 'materials' | 'timeline' | 'design' | 'gallery';
-
-type BasePlanAsset<TType extends PlanAssetType, TData> = {
-  id: string;
-  sessionId: string;
-  assetType: TType;
-  title: string;
-  summary?: string;
-  data: TData;
-  sourceAgent?: AgentSource;
-  createdAt: string;
-};
-
-export type PlanAsset =
-  | BasePlanAsset<'budget', BudgetSpreadsheet>
-  | BasePlanAsset<'contractor', ContractorSpreadsheet>
-  | BasePlanAsset<'materials', MaterialsSpreadsheet>
-  | BasePlanAsset<'timeline', GanttChart>
-  | BasePlanAsset<'design', DesignGuide>
-  | BasePlanAsset<'gallery', DesignImageGallery>;
-
-export type PlanAssetGroup = {
-  type: PlanAssetType;
-  title: string;
-  assets: PlanAsset[];
-};
-
