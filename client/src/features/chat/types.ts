@@ -1,7 +1,7 @@
 export type ChatRole = 'user' | 'assistant';
 
 export type AgentSource =
-  | 'orchestrator'
+  | 'lead-renovation-agent'
   | 'design-inspiration-guide-agent'
   | 'budget-agent'
   | 'contractor-agent'

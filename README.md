@@ -23,7 +23,7 @@ A renovation assistant agent built with Mastra that helps users with design and 
 
 3. **Run the development servers:**
    ```bash
-   # Backend / workflows
+   # Backend / agent API
    pnpm dev
 
    # Frontend (in a second terminal)
@@ -33,7 +33,7 @@ A renovation assistant agent built with Mastra that helps users with design and 
 4. **Sign in & test the chat:**
    - Navigate to `http://localhost:5173`
    - Sign in with a Clerk user (create one in the dashboard if needed)
-   - Send a chat message; the frontend forwards the Clerk session token to the backend, which verifies it before running the workflow.
+   - Send a chat message; the frontend forwards the Clerk session token to the backend, which now routes everything through the lead renovation agent.
 
 ## Image uploads & cleanup
 
@@ -60,25 +60,24 @@ A renovation assistant agent built with Mastra that helps users with design and 
 
 ## Project Structure
 
-- `server/` - Backend server with Mastra agents and workflows
-  - `src/mastra/agents/` - Budget and Design agents
-  - `src/mastra/tools/` - Custom tools for agents
-  - `src/mastra/workflows/` - Workflow orchestration
+- `server/` - Backend server with Mastra lead + specialist agents
+  - `src/mastra/agents/` - Lead agent and specialist definitions
+  - `src/mastra/tools/` - Custom tools for agents (including sub-agent wrappers)
   - `src/mastra/llms/` - LLM model configuration
 
 ## Features
 
 - **Budget Agent**: Helps create detailed renovation budgets with spreadsheets
 - **Design Agent**: Assists with interior and exterior design using web search
-- **Workflow Orchestration**: Routes conversations to the appropriate agent
-- **Clerk Authentication**: Only signed-in users can access the chat; each workflow request includes a Clerk session token that the backend verifies before execution.
+- **Lead Agent Orchestration**: A single lead assistant coordinates the specialist agents through tool calls
+- **Clerk Authentication**: Only signed-in users can access the chat; each agent request includes a Clerk session token that the backend verifies before execution.
 
 ## Authentication Flow
 
 1. The React app is wrapped in `ClerkProvider`; unauthenticated visitors see the Clerk `<SignIn />` component.
-2. When a user submits a chat message, the frontend requests a fresh Clerk session token and sends it in the `Authorization: Bearer <token>` header to `POST /api/workflows/:id/run`.
+2. When a user submits a chat message, the frontend requests a fresh Clerk session token and sends it in the `Authorization: Bearer <token>` header to `POST /api/agents/lead-renovation-agent/run`.
 3. The backend verifies the token with `@clerk/backend`. Invalid or missing tokens receive `401 Unauthorized`.
-4. The verified `userId` (and email, if present) are forwarded to the workflow as part of `inputData`, enabling audit trails or personalized responses.
+4. The verified `userId` (and email, if present) are forwarded to the agent payload so downstream tooling can associate uploads and personalization.
 
 ## Tech Stack
 

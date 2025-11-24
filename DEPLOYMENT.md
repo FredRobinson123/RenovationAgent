@@ -15,7 +15,6 @@ This project no longer uses Docker. Railway’s default build system (Nixpacks) 
 | Server | `PORT` | Provided by Railway; defaults to `5001` for local runs |
 |  | `HOST` | Bind host (`0.0.0.0` in containers) |
 |  | `CLERK_SECRET_KEY` | Clerk backend key for auth |
-|  | `WORKFLOW_TIMEOUT_MS` | Timeout guard for workflows (default `60000`) |
 |  | `LOG_LEVEL` | Pino log level (`info` default) |
 |  | `PRETTY_LOGS` | Set to `true` to enable `pino-pretty` |
 |  | `MASTRA_API_URL` | Override Mastra API base (defaults to local server) |
@@ -23,7 +22,7 @@ This project no longer uses Docker. Railway’s default build system (Nixpacks) 
 |  | `GEMINI_API_KEY` | Optional: required for Gemini LLM provider |
 | Client | `VITE_SERVER_URL` | Base URL for the server (no trailing slash) |
 |  | `VITE_CLERK_PUBLISHABLE_KEY` | Clerk frontend key |
-|  | `VITE_WORKFLOW_TIMEOUT_MS` | Mirrors server timeout (default `60000`) |
+|  | `VITE_ASSISTANT_TIMEOUT_MS` | Optional timeout (ms) for the agent request |
 
 > ⚠️ Secrets (`CLERK_SECRET_KEY`, API keys, Clerk publishable key) should be stored via Railway service variables, not committed locally.
 
@@ -51,7 +50,7 @@ Keeping the chat domain isolated this way makes it easier to evolve without touc
 4. **Environment** – set `VITE_SERVER_URL` to the server’s public URL (Railway exposes it as `${{SERVER.RAILWAY_PUBLIC_DOMAIN}}`) and provide the Clerk publishable key + timeout value.
 5. **Local testing** – `pnpm --filter client... dev` or `pnpm --filter client... preview -- --host 0.0.0.0 --port 4173`.
 
-## 4. Railway workflow (no Docker)
+## 4. Railway deployment (no Docker)
 
 - Create a Railway project and add two services (server/client) as described above.
 - Railway’s auto-detected Node builder (Nixpacks) will install PNPM, honor the provided commands, and keep the deployment simple.
@@ -64,7 +63,7 @@ Keeping the chat domain isolated this way makes it easier to evolve without touc
 ### Deployment checks
 
 1. Watch build logs to confirm PNPM installs succeed and the container listens on the assigned port.
-2. Once deployed, hit the server’s `/` endpoint (or whichever workflow routes you expose) to ensure a 200/401 response, and open the client domain to verify it loads assets via HTTPS.
+2. Once deployed, hit the server’s `/` endpoint (or the `/api/agents/.../run` route) to ensure a 200/401 response, and open the client domain to verify it loads assets via HTTPS.
 3. Update the client env var if the server domain changes, then redeploy the client service to bake the new value.
 
 ### Rollbacks & scaling

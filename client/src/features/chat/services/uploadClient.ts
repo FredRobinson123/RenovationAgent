@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "@features/chat/services/workflowClient";
+import { API_BASE_URL } from "@features/chat/services/agentClient";
 import type { CustomerImageUpload } from "@features/chat/types";
 import { extractErrorMessage } from "@features/chat/utils/parsers";
 

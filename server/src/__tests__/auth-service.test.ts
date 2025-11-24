@@ -41,7 +41,7 @@ test('authenticateRequest responds 401 when no auth header or cookie is provided
 
   const req = {
     headers: {},
-    url: '/api/workflows/foo/run',
+    url: '/api/agents/foo/run',
     method: 'POST',
   } as IncomingMessage;
   const res = {} as ServerResponse;
@@ -74,7 +74,7 @@ test('authenticateRequest verifies Bearer token successfully', async () => {
     headers: {
       authorization: 'Bearer test-token',
     },
-    url: '/api/workflows/foo/run',
+    url: '/api/agents/foo/run',
     method: 'POST',
   } as IncomingMessage;
   const res = {} as ServerResponse;

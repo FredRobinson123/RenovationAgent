@@ -8,8 +8,7 @@ import { createServer } from 'node:http';
 import { serverConfig, serverEnvironmentSummary, redactToken } from './config/server-config.js';
 import { createRequestHandler } from './routing/router.js';
 import { createAuthService } from './services/auth-service.js';
-import { createWorkflowRunner } from './services/workflow-runner.js';
-import { resolveWorkflowInstance, listWorkflowIds } from './services/workflow-registry.js';
+import { createAgentRunner } from './services/agent-runner.js';
 import { logger } from './utils/pino-logger.js';
 import { sendJson } from './http/http-utils.js';
 import { agents } from './mastra/agents/index.js';
@@ -22,17 +21,15 @@ const authService = createAuthService({
   sendJson,
 });
 
-const workflowRunner = createWorkflowRunner({
+const agentRunner = createAgentRunner({
   logger,
-  workflowTimeoutMs: serverConfig.workflowTimeoutMs,
-  resolveWorkflowInstance,
 });
 
 const requestHandler = createRequestHandler({
   logger,
   defaultPort: serverConfig.port,
   authenticateRequest: authService.authenticateRequest,
-  handleWorkflowRunRequest: workflowRunner.handleWorkflowRunRequest,
+  handleAgentRunRequest: agentRunner.handleAgentRunRequest,
 });
 
 logger.info('Server environment configuration', serverEnvironmentSummary);
@@ -41,9 +38,8 @@ scheduleUploadCleanup();
 async function startServer() {
   try {
     logger.info('Starting Mastra server...');
-    const workflowIds = listWorkflowIds();
     const agentIds = Object.keys(agents);
-    logger.info(`Mastra instance initialized with ${agentIds.length} agents and ${workflowIds.length} workflows`);
+    logger.info(`Mastra instance initialized with ${agentIds.length} agents`);
 
     const server = createServer((req, res) => {
       requestHandler(req, res).catch((error) => {
@@ -58,7 +54,7 @@ async function startServer() {
 
     server.listen(serverConfig.port, serverConfig.hostname, () => {
       logger.info(`Server ready at http://localhost:${serverConfig.port}`);
-      logger.info('Use POST /api/workflows/{id}/run to execute workflows.');
+      logger.info('Use POST /api/agents/{id}/run to talk to an agent.');
     });
 
     process.on('SIGINT', () => {

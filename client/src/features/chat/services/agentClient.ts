@@ -17,7 +17,7 @@ import {
   isMaterialsSpreadsheet,
 } from "@features/chat/utils/guards";
 
-const WORKFLOW_ID = "renovation-workflow";
+const LEAD_AGENT_SLUG = "lead-renovation-agent";
 const LOCALHOST_SERVER_URL = "http://localhost:5001";
 const RUNTIME_ORIGIN =
   typeof window !== "undefined" && window.location?.origin ? window.location.origin : undefined;
@@ -51,24 +51,26 @@ const normalizeBaseUrl = (rawUrl: unknown): string => {
 export const API_BASE_URL = normalizeBaseUrl(
   import.meta.env.VITE_SERVER_URL ?? RUNTIME_ORIGIN ?? LOCALHOST_SERVER_URL
 );
-const WORKFLOW_ENDPOINT = `${API_BASE_URL}/api/workflows/${WORKFLOW_ID}/run`;
-const WORKFLOW_REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_WORKFLOW_TIMEOUT_MS ?? 60_000);
+const ASSISTANT_ENDPOINT = `${API_BASE_URL}/api/agents/${LEAD_AGENT_SLUG}/run`;
+const ASSISTANT_REQUEST_TIMEOUT_MS = Number(
+  import.meta.env.VITE_ASSISTANT_TIMEOUT_MS ?? import.meta.env.VITE_WORKFLOW_TIMEOUT_MS ?? 60_000
+);
 
-export const WORKFLOW_TROUBLESHOOTING = `Verify Ren's API server is reachable at ${API_BASE_URL}. In production, set VITE_SERVER_URL in the client environment (Vercel → Settings → Environment Variables); locally, run "pnpm api". If requests keep timing out, check the server logs for workflow errors or raise WORKFLOW_TIMEOUT_MS in server/.env.`;
+export const ASSISTANT_TROUBLESHOOTING = `Verify Ren's API server is reachable at ${API_BASE_URL}. In production, set VITE_SERVER_URL in the client environment (Vercel → Settings → Environment Variables); locally, run "pnpm api". If requests keep timing out, check the server logs for agent errors or raise ASSISTANT_REQUEST_TIMEOUT_MS in server/.env.`;
 
-export type WorkflowUserContext = {
+export type AssistantUserContext = {
   id?: string;
   email?: string;
 };
 
-export type WorkflowRunOptions = {
+export type AgentRunOptions = {
   token?: string;
-  userContext?: WorkflowUserContext;
+  userContext?: AssistantUserContext;
   sessionId?: string;
   uploadedImageIds?: string[];
 };
 
-export type WorkflowRunResult = {
+export type AgentRunResult = {
   finalResponse: string;
   budgetSpreadsheet?: BudgetSpreadsheet;
   contractorSpreadsheet?: ContractorSpreadsheet;
@@ -79,11 +81,11 @@ export type WorkflowRunResult = {
   selectedAgent?: AgentSource;
 };
 
-export async function runRenovationWorkflow(
+export async function runLeadAgentConversation(
   latestCustomerMessage: string,
   conversationHistory: string,
-  options: WorkflowRunOptions = {}
-): Promise<WorkflowRunResult> {
+  options: AgentRunOptions = {}
+): Promise<AgentRunResult> {
   const headers: HeadersInit = { "Content-Type": "application/json" };
   if (options.token) {
     headers.Authorization = `Bearer ${options.token}`;
@@ -110,11 +112,11 @@ export async function runRenovationWorkflow(
   if (supportsAbort) {
     timeoutId = window.setTimeout(() => {
       abortController?.abort();
-    }, WORKFLOW_REQUEST_TIMEOUT_MS);
+    }, ASSISTANT_REQUEST_TIMEOUT_MS);
   }
 
   try {
-    response = await fetch(WORKFLOW_ENDPOINT, {
+    response = await fetch(ASSISTANT_ENDPOINT, {
       method: "POST",
       headers,
       body: JSON.stringify({
@@ -131,14 +133,14 @@ export async function runRenovationWorkflow(
   } catch (networkError) {
     if (networkError instanceof DOMException && networkError.name === "AbortError") {
       throw new Error(
-        `Workflow request timed out after ${Math.round(WORKFLOW_REQUEST_TIMEOUT_MS / 1000)} seconds. ${WORKFLOW_TROUBLESHOOTING}`
+        `Assistant request timed out after ${Math.round(ASSISTANT_REQUEST_TIMEOUT_MS / 1000)} seconds. ${ASSISTANT_TROUBLESHOOTING}`
       );
     }
 
     const networkMessage =
       networkError instanceof Error ? networkError.message : "The browser blocked the request.";
     throw new Error(
-      `Unable to reach Ren's workflow server at ${API_BASE_URL}. ${WORKFLOW_TROUBLESHOOTING} (details: ${networkMessage})`
+      `Unable to reach Ren's agent server at ${API_BASE_URL}. ${ASSISTANT_TROUBLESHOOTING} (details: ${networkMessage})`
     );
   } finally {
     if (timeoutId !== undefined) {
@@ -151,63 +153,38 @@ export async function runRenovationWorkflow(
   if (!response.ok) {
     const errorDetail =
       extractErrorMessage(responseText) ?? response.statusText ?? "The server returned an error.";
-    throw new Error(`Workflow request failed (${response.status}). ${errorDetail}`);
+    throw new Error(`Assistant request failed (${response.status}). ${errorDetail}`);
   }
 
   if (!responseText) {
-    throw new Error("Workflow returned an empty response.");
+    throw new Error("Assistant returned an empty response.");
   }
 
   let data: unknown;
   try {
     data = JSON.parse(responseText);
   } catch {
-    throw new Error("Workflow returned an invalid JSON response.");
+    throw new Error("Assistant returned an invalid JSON response.");
   }
 
   const record = data as Record<string, unknown>;
-  const rawResult = record?.result;
-  const resultRecord = isJsonRecord(rawResult) ? rawResult : undefined;
-  const outputRecord = isJsonRecord(resultRecord?.output) ? (resultRecord.output as Record<string, unknown>) : undefined;
-
-  const finalResponse =
-    pickString(record.finalResponse) ??
-    pickString(resultRecord?.finalResponse) ??
-    pickString(outputRecord?.finalResponse) ??
-    (typeof rawResult === "string" ? pickString(rawResult) : undefined);
+  const finalResponse = pickString(record.finalResponse);
 
   if (!finalResponse) {
-    throw new Error("Workflow did not return a usable response.");
+    throw new Error("Assistant did not return a usable response.");
   }
 
   const rawFinalResponse = finalResponse;
   const parsedAssistantMessage = parseAssistantMessageContent(rawFinalResponse);
 
-  const serverSpreadsheet =
-    pickBudgetSpreadsheet(record) ??
-    pickBudgetSpreadsheet(resultRecord) ??
-    pickBudgetSpreadsheet(outputRecord);
+  const serverSpreadsheet = pickBudgetSpreadsheet(record);
+  const serverContractorSpreadsheet = pickContractorSpreadsheet(record);
+  const serverMaterialsSpreadsheet = pickMaterialsSpreadsheet(record);
+  const serverGanttChart = pickGanttChart(record);
+  const serverImageGallery = pickImageGallery(record);
+  const serverDesignGuide = pickDesignGuide(record);
 
-  const serverContractorSpreadsheet =
-    pickContractorSpreadsheet(record) ??
-    pickContractorSpreadsheet(resultRecord) ??
-    pickContractorSpreadsheet(outputRecord);
-
-  const serverMaterialsSpreadsheet =
-    pickMaterialsSpreadsheet(record) ??
-    pickMaterialsSpreadsheet(resultRecord) ??
-    pickMaterialsSpreadsheet(outputRecord);
-
-  const serverGanttChart =
-    pickGanttChart(record) ?? pickGanttChart(resultRecord) ?? pickGanttChart(outputRecord);
-
-  const serverImageGallery =
-    pickImageGallery(record) ?? pickImageGallery(resultRecord) ?? pickImageGallery(outputRecord);
-  const serverDesignGuide =
-    pickDesignGuide(record) ?? pickDesignGuide(resultRecord) ?? pickDesignGuide(outputRecord);
-
-  const selectedAgent =
-    pickSelectedAgent(record) ?? pickSelectedAgent(resultRecord) ?? pickSelectedAgent(outputRecord);
+  const selectedAgent = pickSelectedAgent(record) ?? ("lead-renovation-agent" as AgentSource);
 
   return {
     finalResponse: parsedAssistantMessage.content,
@@ -224,7 +201,7 @@ export async function runRenovationWorkflow(
 }
 
 export function buildFriendlyErrorMessage(error: unknown): string {
-  const defaultMessage = `Something went wrong while contacting the renovation workflow. ${WORKFLOW_TROUBLESHOOTING}`;
+  const defaultMessage = `Something went wrong while contacting the renovation assistant. ${ASSISTANT_TROUBLESHOOTING}`;
 
   if (error instanceof Error) {
     const trimmedMessage = error.message.trim();
@@ -232,7 +209,7 @@ export function buildFriendlyErrorMessage(error: unknown): string {
       return defaultMessage;
     }
 
-    if (trimmedMessage.includes(WORKFLOW_TROUBLESHOOTING)) {
+    if (trimmedMessage.includes(ASSISTANT_TROUBLESHOOTING)) {
       return trimmedMessage;
     }
 
@@ -241,7 +218,7 @@ export function buildFriendlyErrorMessage(error: unknown): string {
       /Unable to reach Ren/i.test(trimmedMessage) ||
       /timed out/i.test(trimmedMessage)
     ) {
-      return `${trimmedMessage} ${WORKFLOW_TROUBLESHOOTING}`;
+      return `${trimmedMessage} ${ASSISTANT_TROUBLESHOOTING}`;
     }
 
     return trimmedMessage;
@@ -358,7 +335,7 @@ function isAgentSource(value: unknown): value is AgentSource {
   }
   return [
     "assistant",
-    "orchestrator",
+    "lead-renovation-agent",
     "design-inspiration-guide-agent",
     "budget-agent",
     "contractor-agent",

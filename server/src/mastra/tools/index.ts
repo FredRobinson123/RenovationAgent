@@ -6,6 +6,13 @@ import { generateBudgetSpreadsheet } from './create-budget-spreadsheet-tool.js';
 import { generateContractorSpreadsheet } from './contractor-spreadsheet-tool.js';
 import { generateMaterialsSpreadsheet } from './materials-spreadsheet-tool.js';
 import { generateGanttChart } from './gantt-chart-tool.js';
+import {
+    callBudgetSubAgentTool,
+    callContractorSubAgentTool,
+    callDesignInspirationSubAgentTool,
+    callMaterialsSubAgentTool,
+    callTimelineSubAgentTool,
+} from './subagent-tools.js';
 
 export const tools = {
     designWebSearch,
@@ -16,6 +23,11 @@ export const tools = {
     generateContractorSpreadsheet,
     generateMaterialsSpreadsheet,
     generateGanttChart,
+    callBudgetSubAgentTool,
+    callContractorSubAgentTool,
+    callDesignInspirationSubAgentTool,
+    callMaterialsSubAgentTool,
+    callTimelineSubAgentTool,
 };
 
 export {
@@ -27,4 +39,9 @@ export {
     generateContractorSpreadsheet,
     generateMaterialsSpreadsheet,
     generateGanttChart,
+    callBudgetSubAgentTool,
+    callContractorSubAgentTool,
+    callDesignInspirationSubAgentTool,
+    callMaterialsSubAgentTool,
+    callTimelineSubAgentTool,
 };

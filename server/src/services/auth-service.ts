@@ -66,7 +66,7 @@ export function createAuthService({
   }
 
   async function authenticateRequest(req: IncomingMessage, res: ServerResponse): Promise<AuthenticatedUser | undefined> {
-    logger.debug('Authenticating workflow request', {
+    logger.debug('Authenticating agent request', {
       url: req.url,
       hasAuthHeader: Boolean(req.headers.authorization),
       hasSessionCookie: Boolean(req.headers.cookie?.includes('__session')),

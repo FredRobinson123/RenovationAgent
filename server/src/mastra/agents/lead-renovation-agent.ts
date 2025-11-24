@@ -2,17 +2,29 @@ import { Agent } from '@mastra/core/agent';
 import { PromptInjectionDetector, ModerationProcessor } from '@mastra/core/processors';
 import { Memory } from '@mastra/memory';
 import { LibSQLStore } from '@mastra/libsql';
+import { leadRenovationAssistantAgentPrompt } from './prompts.js';
 import { geminiFasttModel, geminiGuardModel, INPUT_GUARD_THRESHOLD } from '../llms/index.js';
-import { guideSystemPrompt } from './prompts.js';
+import {
+  callBudgetSubAgentTool,
+  callContractorSubAgentTool,
+  callDesignInspirationSubAgentTool,
+  callMaterialsSubAgentTool,
+  callTimelineSubAgentTool,
+} from '../tools/subagent-tools.js';
 
-export const guideAgent = new Agent({
-  name: 'Guide Agent',
+export const leadRenovationAgent = new Agent({
+  name: 'Lead Renovation Assistant',
   description:
-    'Helps guide customers to a question Wren can answer. This agent responds to off-scope questions as well as greetings and formalities.',
-  instructions: guideSystemPrompt,
+    'Acts as the customer’s primary renovation guide, coordinating specialist sub-agents to cover design, budgeting, timeline, contractor sourcing, and materials decisions.',
+  instructions: leadRenovationAssistantAgentPrompt,
   model: geminiFasttModel,
-  // The guide agent does not currently use tools – it focuses on conversational guidance.
-  tools: {},
+  tools: {
+    call_budget_subagent: callBudgetSubAgentTool,
+    call_contractor_subagent: callContractorSubAgentTool,
+    call_design_inspiration_subagent: callDesignInspirationSubAgentTool,
+    call_materials_subagent: callMaterialsSubAgentTool,
+    call_timeline_subagent: callTimelineSubAgentTool,
+  },
   inputProcessors: [
     new PromptInjectionDetector({
       model: geminiGuardModel,
@@ -31,7 +43,7 @@ export const guideAgent = new Agent({
     }),
   ],
   defaultGenerateOptions: {
-    toolChoice: 'none',
+    toolChoice: 'auto',
     providerOptions: {
       anthropic: {
         stream: false,
@@ -51,3 +63,4 @@ export const guideAgent = new Agent({
     },
   }),
 });
+

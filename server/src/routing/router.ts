@@ -1,7 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { setCorsHeaders, sendJson } from '../http/http-utils.js';
 import { agents } from '../mastra/agents/index.js';
-import { listWorkflowIds, listWorkflowKeys } from '../services/workflow-registry.js';
 import type { LoggerLike } from '../types.js';
 import type { AuthenticatedUser } from '../services/auth-service.js';
 import { handleImageUploadRequest, handleUploadDeleteRequest } from './upload-handler.js';
@@ -10,15 +9,15 @@ export type RouterDeps = {
   logger: LoggerLike;
   defaultPort: number;
   authenticateRequest: (req: IncomingMessage, res: ServerResponse) => Promise<AuthenticatedUser | undefined>;
-  handleWorkflowRunRequest: (
-    workflowId: string,
+  handleAgentRunRequest: (
+    agentSlug: string,
     req: IncomingMessage,
     res: ServerResponse,
     authUser: AuthenticatedUser
   ) => Promise<void>;
 };
 
-export function createRequestHandler({ logger, defaultPort, authenticateRequest, handleWorkflowRunRequest }: RouterDeps) {
+export function createRequestHandler({ logger, defaultPort, authenticateRequest, handleAgentRunRequest }: RouterDeps) {
   const agentIds = Object.keys(agents);
 
   return async function requestHandler(req: IncomingMessage, res: ServerResponse) {
@@ -45,9 +44,6 @@ export function createRequestHandler({ logger, defaultPort, authenticateRequest,
 
       const hostHeader = req.headers.host ?? `localhost:${defaultPort}`;
       const url = new URL(req.url, `http://${hostHeader}`);
-      const workflowIds = listWorkflowIds();
-      const workflowKeys = listWorkflowKeys();
-
       if (req.method === 'GET' && url.pathname === '/health') {
         sendJson(res, 200, { status: 'ok', timestamp: new Date().toISOString() });
         return;
@@ -56,17 +52,16 @@ export function createRequestHandler({ logger, defaultPort, authenticateRequest,
       if (req.method === 'GET' && url.pathname === '/') {
         sendJson(res, 200, {
           message: 'Renovation Agent server is running',
-          workflows: workflowIds,
-          workflowKeys,
           agents: agentIds,
+          agentEndpoints: agentIds.map((id) => `/api/agents/${id.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()}/run`),
         });
         return;
       }
 
-      if (req.method === 'POST' && url.pathname.startsWith('/api/workflows/') && url.pathname.endsWith('/run')) {
-        const [, , , workflowId] = url.pathname.split('/');
-        if (!workflowId) {
-          sendJson(res, 400, { error: 'Invalid workflow path' });
+      if (req.method === 'POST' && url.pathname.startsWith('/api/agents/') && url.pathname.endsWith('/run')) {
+        const [, , , agentSlug] = url.pathname.split('/');
+        if (!agentSlug) {
+          sendJson(res, 400, { error: 'Invalid agent path' });
           return;
         }
 
@@ -75,7 +70,7 @@ export function createRequestHandler({ logger, defaultPort, authenticateRequest,
           return;
         }
 
-        await handleWorkflowRunRequest(workflowId, req, res, authUser);
+        await handleAgentRunRequest(agentSlug, req, res, authUser);
         return;
       }
 

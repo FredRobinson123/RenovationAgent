@@ -5,9 +5,9 @@ import { INITIAL_ASSISTANT_MESSAGE } from "@features/chat/constants";
 import { buildConversationHistory, createMessageId } from "@features/chat/utils/messages";
 import {
   buildFriendlyErrorMessage,
-  runRenovationWorkflow,
-  type WorkflowUserContext,
-} from "@features/chat/services/workflowClient";
+  runLeadAgentConversation,
+  type AssistantUserContext,
+} from "@features/chat/services/agentClient";
 import { uploadImages, deleteUpload } from "@features/chat/services/uploadClient";
 import { useToast } from "@shared/hooks/use-toast";
 
@@ -245,9 +245,9 @@ export function useChatSession(): UseChatSessionResult {
       setIsSending(true);
 
       try {
-        const token = await getClerkToken("workflow run");
+        const token = await getClerkToken("agent run");
 
-        const userMetadata: WorkflowUserContext | undefined = user
+        const userMetadata: AssistantUserContext | undefined = user
           ? {
               id: user.id,
               email: user.primaryEmailAddress?.emailAddress ?? undefined,
@@ -265,7 +265,7 @@ export function useChatSession(): UseChatSessionResult {
           imageGallery,
           designGuide,
           selectedAgent,
-        } = await runRenovationWorkflow(
+        } = await runLeadAgentConversation(
           trimmed,
           conversationHistory,
           {
