@@ -6,7 +6,7 @@ import { ChatHeader } from "@features/chat/components/ChatHeader";
 import { MessageList } from "@features/chat/components/MessageList";
 import { useChatSession } from "@features/chat/hooks/useChatSession";
 import { PlanBuilderPanel } from "@features/chat/components/PlanBuilderPanel";
-import { PlanBuilderWidget } from "@features/chat/components/PlanBuilderWidget";
+import { PlanBuilderFloatingButton, PlanBuilderWidget } from "@features/chat/components/PlanBuilderWidget";
 import { useIsMobile } from "@shared/hooks/use-mobile";
 import { FloatingNavButtons } from "@/components/FloatingNavButtons";
 import { resetChatSession } from "@features/chat/utils/session";
@@ -41,7 +41,8 @@ function WrenChatShell() {
   }, [hasPlanAssets]);
 
   const showDesktopPanel = hasPlanAssets && !isMobile && isPlanOpen;
-  const shouldShowPlanToggle = hasPlanAssets && !isPlanOpen;
+  const shouldShowDesktopPlanWidget = hasPlanAssets && !isPlanOpen && !isMobile;
+  const shouldShowMobilePlanWidget = hasPlanAssets && !isPlanOpen && isMobile;
 
   useEffect(() => {
     const previousIds = planAssetIdsRef.current;
@@ -74,16 +75,26 @@ function WrenChatShell() {
     <div className="flex flex-col min-h-screen bg-background">
       <ChatHeader />
       <div className="flex flex-1 overflow-hidden">
-        <div className={`flex flex-col h-full min-h-0 ${showDesktopPanel ? "md:w-1/2" : "w-full"}`}>
+        <div className={`flex flex-col h-full min-h-0 flex-1 ${showDesktopPanel ? "md:w-1/2" : ""}`}>
           <div className="flex-1 overflow-hidden min-h-0">
             <MessageList messages={messages} isSending={isSending} messagesEndRef={messagesEndRef} />
           </div>
         </div>
 
-        {showDesktopPanel && (
+        {showDesktopPanel ? (
           <div className="hidden md:flex md:w-1/2 border-l border-border bg-muted/10 h-full overflow-hidden min-h-0">
             <PlanBuilderPanel planAssets={planAssets} onClose={handleClosePlan} ref={planPanelRef} />
           </div>
+        ) : (
+          shouldShowDesktopPlanWidget && (
+            <aside className="hidden md:flex md:w-72 lg:w-80 flex-shrink-0 border-l border-border/80 bg-muted/30 px-6 py-8">
+              <PlanBuilderWidget
+                onOpen={handleOpenPlan}
+                hasUpdates={hasPendingPlanUpdate}
+                className="w-full bg-background"
+              />
+            </aside>
+          )
         )}
       </div>
       <ChatInput
@@ -103,8 +114,8 @@ function WrenChatShell() {
         </div>
       )}
 
-      {shouldShowPlanToggle && (
-        <PlanBuilderWidget onOpen={handleOpenPlan} hasUpdates={hasPendingPlanUpdate} />
+      {shouldShowMobilePlanWidget && (
+        <PlanBuilderFloatingButton onOpen={handleOpenPlan} hasUpdates={hasPendingPlanUpdate} />
       )}
     </div>
   );

@@ -273,9 +273,9 @@ You are Wren, the **Design Inspiration Guide**. You synthesize customer notes an
 Respond with JSON only — no lead-in prose:
 {
   "designGuide": {
-    "condensedKeywords": ["organic modern living room", "neutral boucle seating"],
-    "pinterestSearchQuery": "organic modern living room boucle seating travertine",
-    "styleLabel": "Organic modern with sculptural neutrals",
+    "condensedKeywords": ["modern living room", "neutral boucle seating"],
+    "pinterestSearchQuery": "modern living room boucle seating travertine",
+    "styleLabel": "Modern with sculptural neutrals",
     "longFormGuidance": "2-4 sentences (or short bullet list) covering layout, palette, materials, lighting, and how their uploads inform the direction.",
     "clarifyingQuestions": [
       "Only populate if crucial info is still missing; otherwise use an empty array."
