@@ -1,3 +1,4 @@
+import { tryGenerateWithJsonFallback } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { designInspirationGuideAgent } from '../agents/design-inspiration-guide-agent.js';
@@ -126,9 +127,13 @@ export const callBudgetSubAgentTool = createTool({
   outputSchema: BudgetToolOutputSchema,
   execute: async ({ context }) => {
     const message = conversationMessageForAgent(context);
-    const response = await budgetAgent.generate(message);
+    const response = await tryGenerateWithJsonFallback(budgetAgent, message, {
+      structuredOutput: {
+        schema: BudgetAgentReplySchema,
+      },
+    });
     const rawText = response.text ?? '';
-    const structured = parseBudgetAgentReply(rawText);
+    const structured = response.object ?? parseBudgetAgentReply(rawText);
     recordSubAgentArtifact('budget', structured);
 
     const baseResult = {
@@ -148,9 +153,13 @@ export const callContractorSubAgentTool = createTool({
   outputSchema: ContractorToolOutputSchema,
   execute: async ({ context }) => {
     const message = conversationMessageForAgent(context);
-    const response = await contractorAgent.generate(message);
+    const response = await tryGenerateWithJsonFallback(contractorAgent, message, {
+      structuredOutput: {
+        schema: ContractorAgentReplySchema,
+      },
+    });
     const rawText = response.text ?? '';
-    const structured = parseContractorAgentReply(rawText);
+    const structured = response.object ?? parseContractorAgentReply(rawText);
     recordSubAgentArtifact('contractor', structured);
 
     const baseResult = {
@@ -169,9 +178,13 @@ export const callTimelineSubAgentTool = createTool({
   outputSchema: TimelineToolOutputSchema,
   execute: async ({ context }) => {
     const message = conversationMessageForAgent(context);
-    const response = await timelineAgent.generate(message);
+    const response = await tryGenerateWithJsonFallback(timelineAgent, message, {
+      structuredOutput: {
+        schema: TimelineAgentReplySchema,
+      },
+    });
     const rawText = response.text ?? '';
-    const structured = parseTimelineAgentReply(rawText);
+    const structured = response.object ?? parseTimelineAgentReply(rawText);
     recordSubAgentArtifact('timeline', structured);
 
     const baseResult = {
@@ -190,9 +203,13 @@ export const callMaterialsSubAgentTool = createTool({
   outputSchema: MaterialsToolOutputSchema,
   execute: async ({ context }) => {
     const message = conversationMessageForAgent(context);
-    const response = await materialsAgent.generate(message);
+    const response = await tryGenerateWithJsonFallback(materialsAgent, message, {
+      structuredOutput: {
+        schema: MaterialsAgentReplySchema,
+      },
+    });
     const rawText = response.text ?? '';
-    const structured = parseMaterialsAgentReply(rawText);
+    const structured = response.object ?? parseMaterialsAgentReply(rawText);
     recordSubAgentArtifact('materials', structured);
 
     const baseResult = {
@@ -244,9 +261,13 @@ export const callDesignInspirationSubAgentTool = createTool({
       uploads,
     });
 
-    const response = await designInspirationGuideAgent.generate(message);
+    const response = await tryGenerateWithJsonFallback(designInspirationGuideAgent, message, {
+      structuredOutput: {
+        schema: DesignInspirationGuideAgentReplySchema,
+      },
+    });
     const rawText = response.text ?? '';
-    const structured = parseDesignInspirationGuideReply(rawText);
+    const structured = response.object ?? parseDesignInspirationGuideReply(rawText);
     const normalizedStructured = structured
       ? {
           ...structured,
