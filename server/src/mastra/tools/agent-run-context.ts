@@ -15,10 +15,22 @@ export type SubAgentArtifacts = {
   design?: DesignInspirationGuideAgentReply;
 };
 
+export type AgentInlineUpload = {
+  id: string;
+  signedUrl: string;
+  fileName?: string;
+  mimeType?: string;
+  sizeBytes?: number;
+  createdAt?: string;
+  sessionId?: string;
+  storagePath?: string;
+};
+
 export type AgentRunContext = {
   sessionId: string;
   userId?: string;
   uploadedImageIds?: string[];
+  inlineUploads?: AgentInlineUpload[];
   artifacts: SubAgentArtifacts;
 };
 

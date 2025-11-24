@@ -24,7 +24,12 @@ import {
   ContractorAgentReplySchema,
 } from '../agents/shared-schemas.js';
 import { BudgetAgentReplySchema } from './create-budget-spreadsheet-tool.js';
-import { getAgentRunContext, recordSubAgentArtifact } from './agent-run-context.js';
+import {
+  getAgentRunContext,
+  recordSubAgentArtifact,
+  type AgentInlineUpload,
+} from './agent-run-context.js';
+import type { ChatImageUploadWithUrl } from '../../services/chat-upload-service.js';
 
 const LeadAgentToolInputSchema = z.object({
   taskSummary: z
@@ -213,11 +218,26 @@ export const callDesignInspirationSubAgentTool = createTool({
   execute: async ({ context }) => {
     const history = normalizeHistory(context);
     const runContext = getAgentRunContext();
-    const uploads = await loadUploadsForTurn(
-      context.uploadedImageIds ?? runContext?.uploadedImageIds,
-      context.userId ?? runContext?.userId,
-      'design inspiration sub-agent tool'
+    const requestedIds = context.uploadedImageIds ?? runContext?.uploadedImageIds ?? [];
+    const sessionId = context.sessionId ?? runContext?.sessionId;
+    const userId = context.userId ?? runContext?.userId;
+    const { inlineResolved, missingIds } = resolveInlineUploads(
+      requestedIds,
+      runContext?.inlineUploads,
+      sessionId,
+      userId
     );
+
+    let uploads: ChatImageUploadWithUrl[] = inlineResolved;
+
+    if (missingIds.length && userId) {
+      const fetched = await loadUploadsForTurn(
+        missingIds,
+        userId,
+        'design inspiration sub-agent tool'
+      );
+      uploads = uploads.concat(fetched);
+    }
     const message = buildDesignGuideUserMessage({
       latestCustomerMessage: context.latestCustomerMessage,
       conversationHistory: history,
@@ -259,4 +279,54 @@ export const callDesignInspirationSubAgentTool = createTool({
     return normalizedStructured ? { ...baseResult, structured: normalizedStructured } : baseResult;
   },
 });
+
+function resolveInlineUploads(
+  requestedIds: string[],
+  inlineUploads: AgentInlineUpload[] | undefined,
+  sessionId: string | undefined,
+  userId: string | undefined
+): { inlineResolved: ChatImageUploadWithUrl[]; missingIds: string[] } {
+  if (!requestedIds.length) {
+    return { inlineResolved: [], missingIds: [] };
+  }
+
+  const lookup = new Map<string, AgentInlineUpload>();
+  if (inlineUploads?.length) {
+    for (const upload of inlineUploads) {
+      const id = upload.id?.trim();
+      if (!id || lookup.has(id)) {
+        continue;
+      }
+      lookup.set(id, upload);
+    }
+  }
+
+  const resolved: ChatImageUploadWithUrl[] = [];
+  const missing: string[] = [];
+
+  for (const rawId of requestedIds) {
+    const id = rawId?.trim();
+    if (!id) {
+      continue;
+    }
+    const inline = lookup.get(id);
+    if (inline && inline.signedUrl) {
+      resolved.push({
+        id,
+        sessionId: inline.sessionId ?? sessionId ?? 'unknown-session',
+        userId: userId ?? 'unknown-user',
+        fileName: inline.fileName ?? 'customer-upload',
+        storagePath: inline.storagePath ?? '',
+        mimeType: inline.mimeType ?? 'application/octet-stream',
+        sizeBytes: inline.sizeBytes ?? 0,
+        createdAt: inline.createdAt ?? new Date().toISOString(),
+        signedUrl: inline.signedUrl,
+      });
+    } else {
+      missing.push(id);
+    }
+  }
+
+  return { inlineResolved: resolved, missingIds: missing };
+}
 

@@ -73,4 +73,34 @@ function toTimestamp(value: string | undefined): number {
   return Number.isFinite(parsed) ? parsed : FALLBACK_SORT_KEY;
 }
 
+export function selectAttachmentsByIds(
+  messages: ChatMessage[],
+  ids: string[]
+): CustomerImageUpload[] {
+  if (!ids.length) {
+    return [];
+  }
+
+  const trimmedIds = ids.map((id) => id.trim()).filter(Boolean);
+  const lookup = new Map<string, CustomerImageUpload>();
+
+  for (const message of messages) {
+    if (message.role !== "user" || !message.attachments?.length) {
+      continue;
+    }
+
+    for (const attachment of message.attachments) {
+      const attachmentId = attachment.id?.trim();
+      if (!attachmentId || lookup.has(attachmentId)) {
+        continue;
+      }
+      lookup.set(attachmentId, attachment);
+    }
+  }
+
+  return trimmedIds
+    .map((id) => lookup.get(id))
+    .filter((attachment): attachment is CustomerImageUpload => Boolean(attachment));
+}
+
 

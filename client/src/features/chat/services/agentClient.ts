@@ -3,6 +3,7 @@ import type {
   AgentSource,
   BudgetSpreadsheet,
   ContractorSpreadsheet,
+  CustomerImageUpload,
   DesignGuide,
   DesignImageGallery,
   GanttChart,
@@ -71,6 +72,7 @@ export type AgentRunOptions = {
   userContext?: AssistantUserContext;
   sessionId?: string;
   uploadedImageIds?: string[];
+  uploadedImages?: CustomerImageUpload[];
 };
 
 export type AgentRunResult = {
@@ -107,6 +109,15 @@ export async function runLeadAgentConversation(
   const uploadIds = Array.isArray(options.uploadedImageIds)
     ? options.uploadedImageIds.filter((id): id is string => typeof id === "string" && id.trim().length > 0)
     : [];
+  const inlineUploads = Array.isArray(options.uploadedImages)
+    ? options.uploadedImages.filter(
+        (upload): upload is CustomerImageUpload =>
+          typeof upload?.id === "string" &&
+          upload.id.trim().length > 0 &&
+          typeof upload.signedUrl === "string" &&
+          upload.signedUrl.trim().length > 0
+      )
+    : [];
 
   let response: Response;
   const supportsAbort = typeof AbortController !== "undefined";
@@ -129,6 +140,7 @@ export async function runLeadAgentConversation(
           conversationHistory,
           sessionId,
           uploadedImageIds: uploadIds,
+          uploadedImages: inlineUploads.length ? inlineUploads : undefined,
           ...userMetadata,
         },
       }),

@@ -5,7 +5,11 @@ import type { JsonRecord, LoggerLike } from '../types.js';
 import type { AuthenticatedUser } from './auth-service.js';
 import { agents } from '../mastra/agents/index.js';
 import { buildConversationAwareMessage } from '../mastra/agents/context-helpers.js';
-import { withAgentRunContext, type SubAgentArtifacts } from '../mastra/tools/agent-run-context.js';
+import {
+  withAgentRunContext,
+  type AgentInlineUpload,
+  type SubAgentArtifacts,
+} from '../mastra/tools/agent-run-context.js';
 import {
   parseBudgetAgentReply,
   parseContractorAgentReply,
@@ -20,11 +24,23 @@ import {
   type PlanAssetRecord,
 } from './plan-asset-service.js';
 
+const UploadedImageSchema = z.object({
+  id: z.string().min(1, 'uploaded image id is required'),
+  signedUrl: z.string().min(1, 'uploaded image signedUrl is required'),
+  fileName: z.string().optional(),
+  mimeType: z.string().optional(),
+  sizeBytes: z.number().nonnegative().optional(),
+  createdAt: z.string().optional(),
+  sessionId: z.string().optional(),
+  storagePath: z.string().optional(),
+});
+
 const AgentRunInputSchema = z.object({
   latestCustomerMessage: z.string().min(1, 'latestCustomerMessage is required'),
   conversationHistory: z.string().optional(),
   sessionId: z.string().min(1, 'sessionId is required'),
   uploadedImageIds: z.array(z.string()).optional(),
+  uploadedImages: z.array(UploadedImageSchema).optional(),
 });
 
 type AgentRunInput = z.infer<typeof AgentRunInputSchema>;
@@ -78,6 +94,37 @@ function buildSystemContext({
   );
 
   return lines.join('\n');
+}
+
+function normalizeInlineUploads(
+  uploads: z.infer<typeof UploadedImageSchema>[] | undefined
+): AgentInlineUpload[] {
+  if (!uploads?.length) {
+    return [];
+  }
+
+  const normalized: AgentInlineUpload[] = [];
+
+  for (const upload of uploads) {
+    const id = upload.id.trim();
+    const signedUrl = upload.signedUrl.trim();
+    if (!id || !signedUrl) {
+      continue;
+    }
+
+    normalized.push({
+      id,
+      signedUrl,
+      fileName: upload.fileName ?? undefined,
+      mimeType: upload.mimeType ?? undefined,
+      sizeBytes: typeof upload.sizeBytes === 'number' ? upload.sizeBytes : undefined,
+      createdAt: upload.createdAt ?? undefined,
+      sessionId: upload.sessionId ?? undefined,
+      storagePath: upload.storagePath ?? undefined,
+    });
+  }
+
+  return normalized;
 }
 
 function normalizeConversationHistory(input: AgentRunInput, userContextBlock: string): string | undefined {
@@ -246,6 +293,7 @@ export function createAgentRunner({
 
     const uploadIds =
       input.uploadedImageIds?.filter((id) => typeof id === 'string' && id.trim().length > 0) ?? [];
+    const inlineUploads = normalizeInlineUploads(input.uploadedImages);
 
     const metadataBlock = buildSystemContext({
       sessionId: input.sessionId,
@@ -264,6 +312,7 @@ export function createAgentRunner({
       sessionId: input.sessionId,
       userId: authUser.userId,
       uploadedImageIds: uploadIds,
+      inlineUploads,
       artifacts: {} as SubAgentArtifacts,
     };
 
