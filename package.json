@@ -2,6 +2,7 @@
   "name": "renovation-agent",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@10.20.0",
   "description": "A renovation assistant using Mastra",
   "scripts": {
     "dev": "mastra dev --root server --dir server/src/mastra",
