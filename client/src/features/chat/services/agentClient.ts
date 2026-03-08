@@ -26,6 +26,19 @@ const LOCALHOST_SERVER_URL = "http://localhost:5001";
 const RUNTIME_ORIGIN =
   typeof window !== "undefined" && window.location?.origin ? window.location.origin : undefined;
 
+const isLocalOrigin = (value: string | undefined): boolean => {
+  if (!value) {
+    return false;
+  }
+
+  try {
+    const { hostname } = new URL(value);
+    return hostname === "localhost" || hostname === "127.0.0.1";
+  } catch {
+    return /localhost|127\.0\.0\.1/i.test(value);
+  }
+};
+
 const normalizeBaseUrl = (rawUrl: unknown): string => {
   const fallback = LOCALHOST_SERVER_URL;
   if (typeof rawUrl !== "string") {
@@ -52,15 +65,18 @@ const normalizeBaseUrl = (rawUrl: unknown): string => {
   return `https://${trimmed}`;
 };
 
-export const API_BASE_URL = normalizeBaseUrl(
-  import.meta.env.VITE_SERVER_URL ?? RUNTIME_ORIGIN ?? LOCALHOST_SERVER_URL
-);
+const PREFERRED_API_BASE_URL =
+  RUNTIME_ORIGIN && !isLocalOrigin(RUNTIME_ORIGIN)
+    ? RUNTIME_ORIGIN
+    : import.meta.env.VITE_SERVER_URL ?? RUNTIME_ORIGIN ?? LOCALHOST_SERVER_URL;
+
+export const API_BASE_URL = normalizeBaseUrl(PREFERRED_API_BASE_URL);
 const ASSISTANT_ENDPOINT = `${API_BASE_URL}/api/agents/${LEAD_AGENT_SLUG}/run`;
 const ASSISTANT_REQUEST_TIMEOUT_MS = Number(
   import.meta.env.VITE_ASSISTANT_TIMEOUT_MS ?? import.meta.env.VITE_WORKFLOW_TIMEOUT_MS ?? 60_000
 );
 
-export const ASSISTANT_TROUBLESHOOTING = `Verify Ren's API server is reachable at ${API_BASE_URL}. In production, set VITE_SERVER_URL in the client environment (Vercel → Settings → Environment Variables); locally, run "pnpm api". If requests keep timing out, check the server logs for agent errors or raise ASSISTANT_REQUEST_TIMEOUT_MS in server/.env.`;
+export const ASSISTANT_TROUBLESHOOTING = `Verify Ren's API server is reachable at ${API_BASE_URL}. Production deployments use the current site origin by default; only set VITE_SERVER_URL for local development or an intentionally split frontend/backend deployment. Locally, run "pnpm api". If requests keep timing out, check the server logs for agent errors or raise ASSISTANT_REQUEST_TIMEOUT_MS in server/.env.`;
 
 export type AssistantUserContext = {
   id?: string;
@@ -352,4 +368,3 @@ function createFallbackSessionId(): string {
   }
   return `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
-
