@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "mastra dev --root server --dir server/src/mastra",
     "api": "pnpm --filter server dev",
-    "build": "pnpm --filter server build"
+    "build": "pnpm --filter server build",
+    "build:vercel": "pnpm --filter client build"
   },
   "devDependencies": {
     "mastra": "^0.18.1",
