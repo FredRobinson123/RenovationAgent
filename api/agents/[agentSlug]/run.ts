@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { handleCors, authService, agentRunner } from '../../_shared/init.js';
+import { getRuntimeDeps, handleCors, sendInitializationError } from '../../_shared/init.js';
 
 export const config = {
   maxDuration: 300,
@@ -20,8 +20,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const authUser = await authService.authenticateRequest(req, res);
-  if (!authUser) return;
+  try {
+    const { authService, agentRunner } = await getRuntimeDeps();
+    const authUser = await authService.authenticateRequest(req, res);
+    if (!authUser) return;
 
-  await agentRunner.handleAgentRunRequest(agentSlug, req, res, authUser);
+    await agentRunner.handleAgentRunRequest(agentSlug, req, res, authUser);
+  } catch (error) {
+    sendInitializationError(res, error, 'Assistant backend initialization failed.');
+  }
 }

@@ -1,6 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { handleCors, authService, sendJson, logger } from '../../_shared/init.js';
-import { listPlanAssetsBySession } from '../../../server/dist/services/plan-asset-service.js';
+import {
+  getRuntimeDeps,
+  handleCors,
+  sendInitializationError,
+  sendJson,
+} from '../../_shared/init.js';
 
 export const config = {
   api: { bodyParser: false },
@@ -20,16 +24,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const authUser = await authService.authenticateRequest(req, res);
-  if (!authUser) return;
-
   try {
+    const { authService, logger } = await getRuntimeDeps();
+    const { listPlanAssetsBySession } = await import(
+      '../../../server/dist/services/plan-asset-service.js'
+    );
+    const authUser = await authService.authenticateRequest(req, res);
+    if (!authUser) return;
+
     const assets = await listPlanAssetsBySession(decodeURIComponent(sessionId), authUser.userId);
     sendJson(res, 200, { sessionId, assets });
   } catch (error) {
+    if (error instanceof Error && /required|misconfigured|configured/i.test(error.message)) {
+      sendInitializationError(res, error, 'Plan assets backend initialization failed.');
+      return;
+    }
+
+    const { logger } = await getRuntimeDeps().catch(() => ({ logger: console }));
     logger.error('Failed to load plan assets', {
       sessionId,
-      userId: authUser.userId,
       err: error instanceof Error ? { message: error.message } : error,
     });
     sendJson(res, 500, { error: 'Unable to load renovation plan assets' });

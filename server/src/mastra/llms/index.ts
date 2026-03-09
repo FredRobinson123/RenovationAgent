@@ -2,10 +2,13 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 
 export const INPUT_GUARD_THRESHOLD = 0.9;
 
-const geminiApiKey = process.env.GEMINI_API_KEY;
+const geminiApiKey =
+  process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
 if (!geminiApiKey) {
-  throw new Error('GEMINI_API_KEY is required to use the Gemini model.');
+  throw new Error(
+    'A Google model API key is required. Set GEMINI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY in the deployment environment.'
+  );
 }
 
 const googleProvider = createGoogleGenerativeAI({
