@@ -33,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!authUser) return;
 
     const assets = await listPlanAssetsBySession(decodeURIComponent(sessionId), authUser.userId);
-    sendJson(res, 200, { sessionId, assets });
+    res.status(200).json({ sessionId, assets });
   } catch (error) {
     if (error instanceof Error && /required|misconfigured|configured/i.test(error.message)) {
       sendInitializationError(res, error, 'Plan assets backend initialization failed.');
@@ -45,6 +45,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       sessionId,
       err: error instanceof Error ? { message: error.message } : error,
     });
-    sendJson(res, 500, { error: 'Unable to load renovation plan assets' });
+    res.status(500).json({ error: 'Unable to load renovation plan assets' });
   }
 }
