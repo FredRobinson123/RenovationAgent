@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { runUploadCleanupNow } from '../../server/dist/services/upload-cleanup.js';
-import { logger } from '../../server/dist/utils/pino-logger.js';
+import { runUploadCleanupNow } from '../../server/src/services/upload-cleanup.js';
+import { logger } from '../../server/src/utils/pino-logger.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Vercel Cron Jobs send a GET with Authorization: Bearer <CRON_SECRET>.

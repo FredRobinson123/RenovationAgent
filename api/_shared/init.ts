@@ -6,11 +6,11 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createAuthService } from '../../server/dist/services/auth-service.js';
-import { createAgentRunner } from '../../server/dist/services/agent-runner.js';
-import { logger } from '../../server/dist/utils/pino-logger.js';
-import { sendJson, setCorsHeaders } from '../../server/dist/http/http-utils.js';
-import { serverConfig, redactToken } from '../../server/dist/config/server-config.js';
+import { createAuthService } from '../../server/src/services/auth-service.js';
+import { createAgentRunner } from '../../server/src/services/agent-runner.js';
+import { logger } from '../../server/src/utils/pino-logger.js';
+import { sendJson, setCorsHeaders } from '../../server/src/http/http-utils.js';
+import { serverConfig, redactToken } from '../../server/src/config/server-config.js';
 
 export { logger, sendJson, setCorsHeaders, serverConfig };
 
