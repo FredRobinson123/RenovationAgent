@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { handleCors, authService, sendJson, logger } from '../../_shared/init.js';
-import { listPlanAssetsBySession } from '../../../server/dist/services/plan-asset-service.js';
+import { listPlanAssetsBySession } from '../../../server/src/services/plan-asset-service.js';
 
 export const config = {
   api: { bodyParser: false },

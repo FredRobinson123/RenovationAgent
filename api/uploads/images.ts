@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { handleCors, authService, logger } from '../_shared/init.js';
-import { handleImageUploadRequest } from '../../server/dist/routing/upload-handler.js';
+import { handleImageUploadRequest } from '../../server/src/routing/upload-handler.js';
 
 export const config = {
   api: { bodyParser: false },

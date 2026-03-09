@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { handleCors } from './_shared/init.js';
-import { agents } from '../server/dist/mastra/agents/index.js';
+import { agents } from '../server/src/mastra/agents/index.js';
 
 export const config = {
   api: { bodyParser: false },
