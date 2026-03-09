@@ -10,8 +10,7 @@
   },
   "rewrites": [
     { "source": "/health", "destination": "/api/health" },
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/wren", "destination": "/index.html" }
   ],
   "crons": [
     {
