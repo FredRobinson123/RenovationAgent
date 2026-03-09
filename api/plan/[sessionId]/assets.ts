@@ -27,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { authService, logger } = await getRuntimeDeps();
     const { listPlanAssetsBySession } = await import(
-      '../../../server/dist/services/plan-asset-service.js'
+      '../../../server/src/services/plan-asset-service.js'
     );
     const authUser = await authService.authenticateRequest(req, res);
     if (!authUser) return;
