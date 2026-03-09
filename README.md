@@ -14,8 +14,8 @@ A renovation assistant agent built with Mastra that helps users with design and 
      - `PORT` / `HOST` (optional overrides)
      - `CLERK_SECRET_KEY` – from the Clerk dashboard (API Keys tab)
      - Any agent-specific keys (`EXA_API_KEY`, `GEMINI_API_KEY`, etc.) you already use
-   - Frontend: copy `client/env.example` → `client/.env` and populate:
-     - `VITE_SERVER_URL=http://localhost:5001` – switch this to your deployed API origin in Preview/Production.
+  - Frontend: copy `client/env.example` → `client/.env` and populate:
+    - `VITE_SERVER_URL=http://localhost:5001` – local API origin for development. Leave this unset in the Vercel production deploy unless you intentionally host the API on a different origin.
      - `VITE_CLERK_PUBLISHABLE_KEY` – the publishable key from Clerk
    - In Clerk → **Allow list**, add:
      - Frontend origin: `http://localhost:5173`
@@ -52,11 +52,16 @@ A renovation assistant agent built with Mastra that helps users with design and 
 
 ## Deploying to Vercel
 
-1. Deploy the backend (`server/`) first and note the public URL (e.g., `https://renovation-agent-server.vercel.app`).
-2. In the Vercel project for the frontend (`client/`), add the following Environment Variables for every environment you deploy:
-   - `VITE_SERVER_URL` → `https://your-backend-host`
-   - `VITE_CLERK_PUBLISHABLE_KEY` → the same publishable key used locally
-3. Redeploy the client so Vite inlines the environment variables. The client now defaults to the current browser origin if `VITE_SERVER_URL` is missing, but explicitly setting it prevents accidental calls to `localhost`.
+This repo is designed to deploy as a single Vercel project: the Vite client is served from the same origin as the `api/` serverless routes.
+
+1. Create or link one Vercel project at the repo root.
+2. Add the required environment variables in Vercel:
+   - `VITE_CLERK_PUBLISHABLE_KEY`
+   - Server-side secrets such as `CLERK_SECRET_KEY`, `GEMINI_API_KEY`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`
+3. Do not set `VITE_SERVER_URL` for the normal production deployment. The client now prefers the current browser origin in deployed environments, which avoids stale cross-origin API URLs.
+4. Redeploy after changing environment variables.
+
+Set `VITE_SERVER_URL` only if you intentionally split the frontend and backend across different origins.
 
 ## Project Structure
 
@@ -86,4 +91,3 @@ A renovation assistant agent built with Mastra that helps users with design and 
 - [Zod](https://zod.dev) - Schema validation
 - [Exa](https://exa.ai) - Web search API
 - TypeScript
-
