@@ -2,7 +2,7 @@
   "framework": null,
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm run build:vercel",
-  "outputDirectory": "client/dist",
+  "outputDirectory": "dist",
   "functions": {
     "api/**/*.ts": {
       "maxDuration": 300
