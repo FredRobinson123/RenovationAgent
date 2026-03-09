@@ -88,10 +88,10 @@ async function initializeRuntimeDeps(): Promise<RuntimeDeps> {
     loggerModule,
     serverConfigModule,
   ] = await Promise.all([
-    import('../../server/dist/services/auth-service.js'),
-    import('../../server/dist/services/agent-runner.js'),
-    import('../../server/dist/utils/pino-logger.js'),
-    import('../../server/dist/config/server-config.js'),
+    import('../../server/src/services/auth-service.js'),
+    import('../../server/src/services/agent-runner.js'),
+    import('../../server/src/utils/pino-logger.js'),
+    import('../../server/src/config/server-config.js'),
   ]);
 
   const logger = (loggerModule.logger as LoggerLike | undefined) ?? defaultLogger;
