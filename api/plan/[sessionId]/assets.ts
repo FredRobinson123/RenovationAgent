@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { handleCors, authService, sendJson, logger } from '../../_shared/init.js';
+import { handleCors, authService, logger } from '../../_shared/init.js';
 import { listPlanAssetsBySession } from '../../../server/src/services/plan-asset-service.js';
 
 export const config = {
@@ -25,13 +25,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const assets = await listPlanAssetsBySession(decodeURIComponent(sessionId), authUser.userId);
-    sendJson(res, 200, { sessionId, assets });
+    res.status(200).json({ sessionId, assets });
   } catch (error) {
     logger.error('Failed to load plan assets', {
       sessionId,
       userId: authUser.userId,
       err: error instanceof Error ? { message: error.message } : error,
     });
-    sendJson(res, 500, { error: 'Unable to load renovation plan assets' });
+    res.status(500).json({ error: 'Unable to load renovation plan assets' });
   }
 }
