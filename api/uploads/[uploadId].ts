@@ -1,6 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { handleCors, authService, logger } from '../_shared/init.js';
-import { handleUploadDeleteRequest } from '../../server/src/routing/upload-handler.js';
+import { getRuntimeDeps, handleCors, sendInitializationError } from '../_shared/init.js';
 
 export const config = {
   api: { bodyParser: false },
@@ -15,13 +14,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const { uploadId } = req.query;
-  const authUser = await authService.authenticateRequest(req, res);
-  if (!authUser) return;
+  try {
+    const { authService, logger } = await getRuntimeDeps();
+    const { handleUploadDeleteRequest } = await import('../../server/dist/routing/upload-handler.js');
+    const authUser = await authService.authenticateRequest(req, res);
+    if (!authUser) return;
 
-  await handleUploadDeleteRequest(
-    typeof uploadId === 'string' ? uploadId : undefined,
-    res,
-    authUser,
-    { logger },
-  );
+    await handleUploadDeleteRequest(
+      typeof uploadId === 'string' ? uploadId : undefined,
+      res,
+      authUser,
+      { logger },
+    );
+  } catch (error) {
+    sendInitializationError(res, error, 'Uploads backend initialization failed.');
+  }
 }

@@ -1,6 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { runUploadCleanupNow } from '../../server/src/services/upload-cleanup.js';
-import { logger } from '../../server/src/utils/pino-logger.js';
+
+const defaultLogger = {
+  info: (...args: unknown[]) => console.info(...args),
+  error: (...args: unknown[]) => console.error(...args),
+};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Vercel Cron Jobs send a GET with Authorization: Bearer <CRON_SECRET>.
@@ -11,11 +14,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    const [{ runUploadCleanupNow }, loggerModule] = await Promise.all([
+      import('../../server/dist/services/upload-cleanup.js'),
+      import('../../server/dist/utils/pino-logger.js'),
+    ]);
+    const logger = loggerModule.logger ?? defaultLogger;
     const removed = await runUploadCleanupNow();
     logger.info('Cron upload cleanup complete', { removedUploads: removed });
     res.status(200).json({ success: true, removedUploads: removed });
   } catch (error) {
-    logger.error('Cron upload cleanup failed', {
+    defaultLogger.error('Cron upload cleanup failed', {
       err: error instanceof Error ? { message: error.message, stack: error.stack } : error,
     });
     res.status(500).json({ error: 'Cleanup failed' });
