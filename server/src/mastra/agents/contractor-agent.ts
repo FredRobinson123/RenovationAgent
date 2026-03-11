@@ -1,11 +1,10 @@
 import { Agent } from '@mastra/core/agent';
 import { PromptInjectionDetector, ModerationProcessor } from '@mastra/core/processors';
-import { Memory } from '@mastra/memory';
-import { LibSQLStore } from '@mastra/libsql';
 import { geminiFasttModel, geminiGuardModel, INPUT_GUARD_THRESHOLD } from '../llms/index.js';
 import { contractorAgentSystemPrompt } from './prompts.js';
 import { contractorWebSearch } from '../tools/contractor-web-search-tool.js';
 import { generateContractorSpreadsheet } from '../tools/contractor-spreadsheet-tool.js';
+import { createAgentMemory } from './memory.js';
 
 export const contractorAgent = new Agent({
   name: 'Contractor Sourcing Agent',
@@ -41,17 +40,5 @@ export const contractorAgent = new Agent({
       },
     },
   },
-  memory: new Memory({
-    storage: new LibSQLStore({
-      url: 'file:../mastra.db',
-    }),
-    options: {
-      lastMessages: 10,
-      semanticRecall: false,
-      threads: {
-        generateTitle: false,
-      },
-    },
-  }),
+  memory: createAgentMemory(),
 });
-

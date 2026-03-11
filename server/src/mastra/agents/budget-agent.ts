@@ -1,10 +1,9 @@
 import { Agent } from '@mastra/core/agent';
 import { PromptInjectionDetector, ModerationProcessor } from '@mastra/core/processors';
-import { Memory } from '@mastra/memory';
-import { LibSQLStore } from '@mastra/libsql';
 import { geminiFasttModel, geminiGuardModel, INPUT_GUARD_THRESHOLD } from '../llms/index.js';
 import { budgetAgentSystemPrompt } from './prompts.js';
 import { generateBudgetSpreadsheet } from '../tools/create-budget-spreadsheet-tool.js';
+import { createAgentMemory } from './memory.js';
 
 export const budgetAgent = new Agent({
    name: 'Budget Agent',
@@ -40,16 +39,5 @@ export const budgetAgent = new Agent({
        },
    },
 
-   memory: new Memory({
-       storage: new LibSQLStore({
-           url: 'file:../mastra.db',
-       }),
-       options: {
-           lastMessages: 10,
-           semanticRecall: false,
-           threads: {
-               generateTitle: false,
-           },
-       },
-   }),
+   memory: createAgentMemory(),
 }); 
