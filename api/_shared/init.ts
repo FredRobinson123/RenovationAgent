@@ -1,7 +1,8 @@
-import type { ServerResponse } from 'node:http';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-type JsonRecord = Record<string, unknown>;
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
+type JsonRecord = { [key: string]: JsonValue };
 
 type LoggerLike = {
   debug: (...args: unknown[]) => void;
@@ -41,24 +42,15 @@ const defaultLogger: LoggerLike = {
 let runtimeDepsPromise: Promise<RuntimeDeps> | undefined;
 let agentRuntimeDepsPromise: Promise<AgentRuntimeDeps> | undefined;
 
-type JsonResponse = ServerResponse & Partial<Pick<VercelResponse, 'status' | 'json'>>;
-
-export function setCorsHeaders(res: Pick<ServerResponse, 'setHeader'>): void {
+export function setCorsHeaders(res: VercelResponse): void {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
 }
 
-export function sendJson(res: JsonResponse, statusCode: number, body: JsonRecord): void {
+export function sendJson(res: VercelResponse, statusCode: number, body: JsonRecord): void {
   setCorsHeaders(res);
-  if (typeof res.status === 'function' && typeof res.json === 'function') {
-    res.status(statusCode).json(body);
-    return;
-  }
-
-  res.statusCode = statusCode;
-  res.setHeader('Content-Type', 'application/json');
-  res.end(JSON.stringify(body));
+  res.status(statusCode).json(body);
 }
 
 export function handleCors(req: VercelRequest, res: VercelResponse): boolean {
@@ -110,9 +102,9 @@ async function initializeRuntimeDeps(): Promise<RuntimeDeps> {
     loggerModule,
     serverConfigModule,
   ] = await Promise.all([
-    import('../../server/src/services/auth-service.js'),
-    import('../../server/src/utils/pino-logger.js'),
-    import('../../server/src/config/server-config.js'),
+    import('../../server/dist/services/auth-service.js'),
+    import('../../server/dist/utils/pino-logger.js'),
+    import('../../server/dist/config/server-config.js'),
   ]);
 
   const logger = (loggerModule.logger as LoggerLike | undefined) ?? defaultLogger;
@@ -133,7 +125,7 @@ async function initializeRuntimeDeps(): Promise<RuntimeDeps> {
 async function initializeAgentRuntimeDeps(): Promise<AgentRuntimeDeps> {
   const [runtimeDeps, agentRunnerModule] = await Promise.all([
     getRuntimeDeps(),
-    import('../../server/src/services/agent-runner.js'),
+    import('../../server/dist/services/agent-runner.js'),
   ]);
 
   return {
