@@ -14,7 +14,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { authService, logger } = await getRuntimeDeps();
-    const { handleImageUploadRequest } = await import('../../server/dist/routing/upload-handler.js');
+    const { handleImageUploadRequest } = await import('../../server/src/routing/upload-handler.js');
     const authUser = await authService.authenticateRequest(req, res);
     if (!authUser) return;
 

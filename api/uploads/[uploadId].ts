@@ -16,7 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { uploadId } = req.query;
   try {
     const { authService, logger } = await getRuntimeDeps();
-    const { handleUploadDeleteRequest } = await import('../../server/dist/routing/upload-handler.js');
+    const { handleUploadDeleteRequest } = await import('../../server/src/routing/upload-handler.js');
     const authUser = await authService.authenticateRequest(req, res);
     if (!authUser) return;
 

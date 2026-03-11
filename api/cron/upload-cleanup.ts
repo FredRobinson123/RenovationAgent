@@ -15,8 +15,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const [{ runUploadCleanupNow }, loggerModule] = await Promise.all([
-      import('../../server/dist/services/upload-cleanup.js'),
-      import('../../server/dist/utils/pino-logger.js'),
+      import('../../server/src/services/upload-cleanup.js'),
+      import('../../server/src/utils/pino-logger.js'),
     ]);
     const logger = loggerModule.logger ?? defaultLogger;
     const removed = await runUploadCleanupNow();
