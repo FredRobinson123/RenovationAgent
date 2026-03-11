@@ -1,9 +1,8 @@
 import { Agent } from '@mastra/core/agent';
 import { PromptInjectionDetector, ModerationProcessor } from '@mastra/core/processors';
-import { Memory } from '@mastra/memory';
-import { LibSQLStore } from '@mastra/libsql';
 import { geminiThreeProModel, geminiGuardModel, INPUT_GUARD_THRESHOLD } from '../llms/index.js';
 import { designInspirationGuideAgentPrompt } from './prompts.js';
+import { createAgentMemory } from './memory.js';
 
 export const designInspirationGuideAgent = new Agent({
   name: 'Design Inspiration Guide',
@@ -38,17 +37,5 @@ export const designInspirationGuideAgent = new Agent({
       },
     },
   },
-  memory: new Memory({
-    storage: new LibSQLStore({
-      url: 'file:../mastra.db',
-    }),
-    options: {
-      lastMessages: 10,
-      semanticRecall: false,
-      threads: {
-        generateTitle: false,
-      },
-    },
-  }),
+  memory: createAgentMemory(),
 });
-

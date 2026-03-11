@@ -12,6 +12,16 @@ type LoggerLike = {
 };
 
 type RuntimeDeps = {
+  authService: {
+    authenticateRequest: (
+      req: VercelRequest,
+      res: VercelResponse
+    ) => Promise<{ userId: string; email?: string } | undefined>;
+  };
+  logger: LoggerLike;
+};
+
+type AgentRuntimeDeps = RuntimeDeps & {
   agentRunner: {
     handleAgentRunRequest: (
       agentSlug: string,
@@ -20,13 +30,6 @@ type RuntimeDeps = {
       authUser: { userId: string; email?: string }
     ) => Promise<void>;
   };
-  authService: {
-    authenticateRequest: (
-      req: VercelRequest,
-      res: VercelResponse
-    ) => Promise<{ userId: string; email?: string } | undefined>;
-  };
-  logger: LoggerLike;
 };
 
 const defaultLogger: LoggerLike = {
@@ -37,6 +40,7 @@ const defaultLogger: LoggerLike = {
 };
 
 let runtimeDepsPromise: Promise<RuntimeDeps> | undefined;
+let agentRuntimeDepsPromise: Promise<AgentRuntimeDeps> | undefined;
 
 export function setCorsHeaders(res: VercelResponse): void {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -69,6 +73,17 @@ export async function getRuntimeDeps(): Promise<RuntimeDeps> {
   return runtimeDepsPromise;
 }
 
+export async function getAgentRuntimeDeps(): Promise<AgentRuntimeDeps> {
+  if (!agentRuntimeDepsPromise) {
+    agentRuntimeDepsPromise = initializeAgentRuntimeDeps().catch((error) => {
+      agentRuntimeDepsPromise = undefined;
+      throw error;
+    });
+  }
+
+  return agentRuntimeDepsPromise;
+}
+
 export function sendInitializationError(
   res: VercelResponse,
   error: unknown,
@@ -84,12 +99,10 @@ export function sendInitializationError(
 async function initializeRuntimeDeps(): Promise<RuntimeDeps> {
   const [
     authServiceModule,
-    agentRunnerModule,
     loggerModule,
     serverConfigModule,
   ] = await Promise.all([
     import('../../server/dist/services/auth-service.js'),
-    import('../../server/dist/services/agent-runner.js'),
     import('../../server/dist/utils/pino-logger.js'),
     import('../../server/dist/config/server-config.js'),
   ]);
@@ -103,12 +116,21 @@ async function initializeRuntimeDeps(): Promise<RuntimeDeps> {
     sendJson,
   });
 
-  const agentRunner = agentRunnerModule.createAgentRunner({ logger });
-
   return {
-    agentRunner,
     authService,
     logger,
+  };
+}
+
+async function initializeAgentRuntimeDeps(): Promise<AgentRuntimeDeps> {
+  const [runtimeDeps, agentRunnerModule] = await Promise.all([
+    getRuntimeDeps(),
+    import('../../server/dist/services/agent-runner.js'),
+  ]);
+
+  return {
+    ...runtimeDeps,
+    agentRunner: agentRunnerModule.createAgentRunner({ logger: runtimeDeps.logger }),
   };
 }
 

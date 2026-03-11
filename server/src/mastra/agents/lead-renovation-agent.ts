@@ -1,7 +1,5 @@
 import { Agent } from '@mastra/core/agent';
 import { PromptInjectionDetector, ModerationProcessor } from '@mastra/core/processors';
-import { Memory } from '@mastra/memory';
-import { LibSQLStore } from '@mastra/libsql';
 import { leadRenovationAssistantAgentPrompt } from './prompts.js';
 import { geminiFasttModel, geminiGuardModel, INPUT_GUARD_THRESHOLD } from '../llms/index.js';
 import {
@@ -11,6 +9,7 @@ import {
   callMaterialsSubAgentTool,
   callTimelineSubAgentTool,
 } from '../tools/subagent-tools.js';
+import { createAgentMemory } from './memory.js';
 
 export const leadRenovationAgent = new Agent({
   name: 'Lead Renovation Assistant',
@@ -50,17 +49,5 @@ export const leadRenovationAgent = new Agent({
       },
     },
   },
-  memory: new Memory({
-    storage: new LibSQLStore({
-      url: 'file:../mastra.db',
-    }),
-    options: {
-      lastMessages: 10,
-      semanticRecall: false,
-      threads: {
-        generateTitle: false,
-      },
-    },
-  }),
+  memory: createAgentMemory(),
 });
-

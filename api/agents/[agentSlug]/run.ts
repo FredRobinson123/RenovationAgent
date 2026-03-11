@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getRuntimeDeps, handleCors, sendInitializationError } from '../../_shared/init.js';
+import { getAgentRuntimeDeps, handleCors, sendInitializationError } from '../../_shared/init.js';
 
 export const config = {
   maxDuration: 300,
@@ -21,7 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { authService, agentRunner } = await getRuntimeDeps();
+    const { authService, agentRunner } = await getAgentRuntimeDeps();
     const authUser = await authService.authenticateRequest(req, res);
     if (!authUser) return;
 

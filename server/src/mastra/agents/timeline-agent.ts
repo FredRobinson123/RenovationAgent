@@ -1,11 +1,10 @@
 import { Agent } from '@mastra/core/agent';
 import { PromptInjectionDetector, ModerationProcessor } from '@mastra/core/processors';
-import { Memory } from '@mastra/memory';
-import { LibSQLStore } from '@mastra/libsql';
 import { geminiFasttModel, geminiGuardModel, INPUT_GUARD_THRESHOLD } from '../llms/index.js';
 import { timelineAgentSystemPrompt } from './prompts.js';
 import { timelineWebSearch } from '../tools/timeline-web-search-tool.js';
 import { generateGanttChart } from '../tools/gantt-chart-tool.js';
+import { createAgentMemory } from './memory.js';
 
 export const timelineAgent = new Agent({
   name: 'Timeline & Project Planner Agent',
@@ -41,17 +40,5 @@ export const timelineAgent = new Agent({
       },
     },
   },
-  memory: new Memory({
-    storage: new LibSQLStore({
-      url: 'file:../mastra.db',
-    }),
-    options: {
-      lastMessages: 10,
-      semanticRecall: false,
-      threads: {
-        generateTitle: false,
-      },
-    },
-  }),
+  memory: createAgentMemory(),
 });
-
