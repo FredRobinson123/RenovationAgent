@@ -341,7 +341,7 @@ export function parseAssistantMessageContent(text: string): ParsedAssistantMessa
   }
 
   return {
-    content: content.trim(),
+    content: formatAssistantContentForDisplay(content),
     budgetSpreadsheet,
     contractorSpreadsheet,
     materialsSpreadsheet,
@@ -375,11 +375,7 @@ function buildDesignGuideMessage(designGuide: DesignGuide): string {
   }
 
   if (designGuide.clarifyingQuestions && designGuide.clarifyingQuestions.length > 0) {
-    sections.push(
-      ["**Still need:**", ...designGuide.clarifyingQuestions.map((question) => `- ${question}`)].join(
-        "\n"
-      )
-    );
+    sections.push(["**Still need:**", buildNumberedMarkdownList(designGuide.clarifyingQuestions)].join("\n"));
   }
 
   return sections.filter(Boolean).join("\n\n").trim() || "Here’s how I’d evolve your space.";
@@ -436,3 +432,93 @@ function normalizeMessageWhitespace(text: string): string {
   return text.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
+function formatAssistantContentForDisplay(text: string): string {
+  return normalizeClarifyingQuestionBlocks(normalizeMessageWhitespace(text));
+}
+
+function normalizeClarifyingQuestionBlocks(text: string): string {
+  const blocks = text
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  if (blocks.length < 2) {
+    return text;
+  }
+
+  const sections: string[] = [];
+
+  for (let index = 0; index < blocks.length; ) {
+    let runEnd = index;
+    while (runEnd < blocks.length && isStandaloneQuestionBlock(blocks[runEnd])) {
+      runEnd += 1;
+    }
+
+    const runLength = runEnd - index;
+    if (runLength >= 2 && shouldFormatQuestionRun(blocks, index)) {
+      const numberedList = buildNumberedMarkdownList(
+        blocks.slice(index, runEnd).map((block) => normalizeQuestionBlockForOutput(block))
+      );
+
+      if (index > 0 && looksLikeQuestionLeadIn(blocks[index - 1]) && sections.length > 0) {
+        sections[sections.length - 1] = `${sections[sections.length - 1]}\n${numberedList}`;
+      } else {
+        sections.push(numberedList);
+      }
+
+      index = runEnd;
+      continue;
+    }
+
+    sections.push(blocks[index]);
+    index += 1;
+  }
+
+  return sections.join("\n\n").trim();
+}
+
+function shouldFormatQuestionRun(blocks: string[], startIndex: number): boolean {
+  if (startIndex === 0) {
+    return true;
+  }
+
+  return looksLikeQuestionLeadIn(blocks[startIndex - 1]);
+}
+
+function looksLikeQuestionLeadIn(block: string): boolean {
+  const normalized = normalizeBlockForQuestionDetection(block).toLowerCase();
+
+  return (
+    normalized.endsWith(":") ||
+    /(?:could you tell me|can you tell me|can you share|please share|let me know|please confirm|i need (?:a few |some )?(?:details|things|inputs|answers)|need a few more|need a bit more|before i can|to give you|to help me|a few questions|still need)/.test(
+      normalized
+    )
+  );
+}
+
+function isStandaloneQuestionBlock(block: string): boolean {
+  const normalized = normalizeBlockForQuestionDetection(block).replace(/^(\d+[.)]|[-*+])\s+/, "");
+  const questionMarks = normalized.match(/\?/g)?.length ?? 0;
+  return questionMarks === 1 && normalized.endsWith("?");
+}
+
+function normalizeQuestionBlockForOutput(block: string): string {
+  return block
+    .replace(/\s*\n+\s*/g, " ")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim()
+    .replace(/^(\d+[.)]|[-*+])\s+/, "");
+}
+
+function normalizeBlockForQuestionDetection(block: string): string {
+  return block
+    .replace(/\[(.*?)\]\((.*?)\)/g, "$1")
+    .replace(/[*_`~]/g, "")
+    .replace(/\s*\n+\s*/g, " ")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
+function buildNumberedMarkdownList(items: string[]): string {
+  return items.map((item, index) => `${index + 1}. ${item.trim()}`).join("\n");
+}

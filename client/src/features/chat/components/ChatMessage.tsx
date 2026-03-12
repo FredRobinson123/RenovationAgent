@@ -6,11 +6,21 @@ import { ContractorSpreadsheetViewer } from "@/features/chat/widgets/ContractorS
 import { MaterialsSpreadsheetViewer } from "@/features/chat/widgets/MaterialsSpreadsheetViewer";
 import { GanttChartViewer } from "@/features/chat/widgets/GanttChartViewer";
 import { designSystem } from "@/theme/designSystem";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 
 interface ChatMessageProps {
   message: ChatMessageType;
 }
+
+const markdownComponents: Components = {
+  p: ({ children }) => <p className="m-0 [&:not(:first-child)]:mt-4">{children}</p>,
+  ol: ({ children }) => (
+    <ol className="my-3 ml-6 list-decimal space-y-3 pl-2 marker:font-semibold">{children}</ol>
+  ),
+  ul: ({ children }) => <ul className="my-3 ml-6 list-disc space-y-3 pl-2">{children}</ul>,
+  li: ({ children }) => <li className="pl-1 [&>p]:inline [&>p]:m-0">{children}</li>,
+  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+};
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === "user";
@@ -57,7 +67,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
           className="text-base leading-relaxed whitespace-pre-wrap"
           data-testid="text-message-content"
         >
-          <ReactMarkdown>{message.content}</ReactMarkdown>
+          <ReactMarkdown components={markdownComponents}>{message.content}</ReactMarkdown>
         </div>
 
         {message.imageGallery && !isUser && (

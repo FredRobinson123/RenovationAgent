@@ -302,6 +302,26 @@ describe("parseAssistantMessageContent", () => {
     expect(parsed.imageGallery).toBeUndefined();
   });
 
+  it("formats standalone clarifying questions as a tight numbered list", () => {
+    const message = [
+      "To give you the most accurate estimate, I need a few more details. Could you tell me:",
+      "What's the approximate size of your bathroom?",
+      "Are you looking for a full overhaul or more of a refresh?",
+      "Do you have any initial ideas about the style or feeling you want for the new bathroom?",
+    ].join("\n\n");
+
+    const parsed = parseAssistantMessageContent(message);
+
+    expect(parsed.content).toBe(
+      [
+        "To give you the most accurate estimate, I need a few more details. Could you tell me:",
+        "1. What's the approximate size of your bathroom?",
+        "2. Are you looking for a full overhaul or more of a refresh?",
+        "3. Do you have any initial ideas about the style or feeling you want for the new bathroom?",
+      ].join("\n")
+    );
+  });
+
   it("extracts contractor spreadsheets and surfaces the message", () => {
     const payload = JSON.stringify({
       messageForCustomer: "Here are some potential contractors to help with your kitchen flooring.",
@@ -367,6 +387,6 @@ describe("parseAssistantMessageContent", () => {
     expect(parsed.content).toMatch(/Layer boucle seating/i);
     expect(parsed.content).toMatch(/Pinterest search:/i);
     expect(parsed.content).toMatch(/Still need/i);
+    expect(parsed.content).toMatch(/1\. What's your budget ceiling\?/i);
   });
 });
-
