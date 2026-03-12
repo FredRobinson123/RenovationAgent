@@ -3,6 +3,7 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm run build:vercel",
   "outputDirectory": "client/dist",
+  "regions": ["iad1"],
   "functions": {
     "api/**/*.ts": {
       "maxDuration": 300
