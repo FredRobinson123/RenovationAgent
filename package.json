@@ -2,6 +2,7 @@
   "name": "renovation-agent",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "packageManager": "pnpm@10.20.0",
   "engines": {
     "node": "20.x"
